@@ -46,6 +46,9 @@ public class MEIExport {
 
 	public static final String TAB = "    ";
 
+	public static final String MEI_EXT = ".xml";
+	public static final String MEI_EXT_ALT = ".mei";
+	
 	public static final List<String> MEI_HEAD = Arrays.asList("title");
 	public static final List<String> STRINGS = Arrays.asList(
 		"pname", "oct", "accid", "tie", "dur", "dots", "xml:id"
@@ -298,7 +301,7 @@ public class MEIExport {
 		List<List<String>> transBars = null;
 		if (TAB_AND_TRANS || ONLY_TRANS) {
 			List<Rational[]> tripletOnsetPairs = TAB_AND_TRANS ? tab.getTripletOnsetPairs() : null;
-			List<Object> data = getData(tab, trans, mi, ki, tripletOnsetPairs);
+			List<Object> data = getData(tab, trans, mi, ki, tripletOnsetPairs);				
 			data = beam(data, mi, tripletOnsetPairs, mismatchInds, numVoices);
 			transBars = getTransBars(data, tripletOnsetPairs, mismatchInds, numVoices);
 		}
@@ -335,10 +338,13 @@ public class MEIExport {
 					}
 				) + "\r\n");
 
-				if (ONLY_TAB || (TAB_AND_TRANS && tabOnTop)) {
+				if (ONLY_TAB || (TAB_AND_TRANS && TAB_ON_TOP)) { // zondig was tabOnTop
 					tabBars.get(b-1).forEach(s -> scorePlaceholder.append(INDENT_TWO + TAB + s + "\r\n"));
+					if (!ONLY_TAB) {
+						transBars.get(b-1).forEach(s -> scorePlaceholder.append(INDENT_TWO + TAB + s + "\r\n"));
+					}
 				}
-				if ((TAB_AND_TRANS && !tabOnTop) || ONLY_TRANS) {
+				if ((TAB_AND_TRANS && !TAB_ON_TOP) || ONLY_TRANS) { // zondig was tabOnTop
 					transBars.get(b-1).forEach(s -> scorePlaceholder.append(INDENT_TWO + TAB + s + "\r\n"));
 					if (!ONLY_TRANS) {
 						tabBars.get(b-1).forEach(s -> scorePlaceholder.append(INDENT_TWO + TAB + s + "\r\n"));
@@ -354,7 +360,7 @@ public class MEIExport {
 		// 3. Save
 		if (path != null) { 
 			ToolBox.storeTextFile(
-				mei, new File(path + "-" + (grandStaff ? "grand_staff" : "score") + ".xml")
+				mei, new File(path + "-" + (GRAND_STAFF ? "grand_staff" : "score") + MEI_EXT) // zondig was grandStaff
 			);
 			return null;
 		}
@@ -519,9 +525,9 @@ public class MEIExport {
 					}
 					else {
 						staffDefTab.add(TAB + makeOpeningTag("tuning", false, null));
-						List<String> courses = tuning.getCourses();
+						List<String> courses = new ArrayList<String>(tuning.getCourses());
 						Collections.reverse(courses);
-						List<Integer> intervals = tuning.getIntervals();
+						List<Integer> intervals = new ArrayList<Integer>(tuning.getIntervals());
 						Collections.reverse(intervals);
 						int pitch = tuning.getPitchLowestCourse() + ToolBox.sumListInteger(intervals) ;
 						for (int i = 0; i < courses.size(); i++) {
@@ -1084,9 +1090,9 @@ public class MEIExport {
 			int bar = barMetPos[0].getNumer();
 			int voice = LabelTools.convertIntoListOfVoices(trans.getVoiceLabels().get(i)).get(0); // TODO why .get(0)? 
 
-			// currVoiceStrings and currVoiceInts start out as empty lists at i == 0, and 
-			// are populated with currStrs and currInts for the current 
-			// note (+ any preceding rests) while iterating over bnp
+			// currVoiceStrings and currVoiceInts start out as empty lists at i == 0,
+			// and are populated with currStrs and currInts for the current note 
+			// (+ any preceding rests) while iterating over bnp
 			List<String[]> currVoiceStrs = voicesStrs.get(voice);
 			List<Integer[]> currVoiceInts = voicesInts.get(voice);
 
@@ -1335,11 +1341,11 @@ public class MEIExport {
 				System.out.println("pname                    " + pname);
 				System.out.println("accid                    " + accid);
 				System.out.println("oct                      " + oct);
-			}
+			}			
 			// b. Set tie, dur, dots
 			Rational remainingInBar = barEnd.sub(onset);
 			// Single-bar note
-			if (dur.isLessOrEqual(remainingInBar)) {
+			if (dur.isLessOrEqual(remainingInBar)) {				
 				if (verbose) System.out.println("CASE: single-bar note");				
 				updateDataLists(
 					currInts, currStrs, false, onset, 
@@ -1347,7 +1353,7 @@ public class MEIExport {
 					mi, tripletOnsetPairs, gridVal);
 			}
 			// Multi-bar note
-			else {
+			else {				
 				if (verbose) System.out.println("CASE: multi-bar note");
 				// Check how many bars the note spans and make subNoteDurs and 
 				// subNoteDursOnsets (containing the onsets of the subnotes)
@@ -1356,7 +1362,7 @@ public class MEIExport {
 				subNoteDurs.add(remainingInBar);
 				subNoteDursOnsets.add(onset);
 				subNoteDursOnsets.add(onset.add(remainingInBar));
-				Rational remainder = dur.sub(remainingInBar);
+				Rational remainder = dur.sub(remainingInBar);				
 				// In the case of a tablature with predicted durations, those of the final chord
 				// can be incorrectly predicted too long, thus extending beyond endOffset 
 				if (offset.isGreater(endOffset)) {
@@ -1381,18 +1387,18 @@ public class MEIExport {
 							subNoteDurs.add(remainder);
 						}
 					}
-				}
+				}				
 				// For each subnote
 				Rational currOnset = onset;
 				Rational currMetPos = metPos;
 				for (int j = 0; j < subNoteDurs.size(); j++) {
 					Rational currSubNoteDur = subNoteDurs.get(j);
 					Rational currSubNoteDurOnset = subNoteDursOnsets.get(j);
-					int lenBefore = currStrs.size();
+					int lenBefore = currStrs.size();					
 					updateDataLists(
 						currInts, currStrs, false, currSubNoteDurOnset, 
 						i, iTab, curr, currSubNoteDur, currOnset, currMetPos, 
-						mi, tripletOnsetPairs, gridVal);
+						mi, tripletOnsetPairs, gridVal);					
 					int subNoteSize = currStrs.size() - lenBefore;
 					// Set subNoteInd to that of the last sub-subnote
 					int subNoteInd = j == 0 ? currStrs.size() - 1 : // last element of updated list
@@ -1401,7 +1407,8 @@ public class MEIExport {
 						j == 0 ? subNoteSize == 1 ? "i" : "m" :
 						(j == subNoteDurs.size() - 1 ? (subNoteSize == 1 ? "t" : "m") : 
 						"m");
-					currStrs.get(subNoteInd)[STRINGS.indexOf("tie")] = "tie='" + tie + "'";					
+					currStrs.get(subNoteInd)[STRINGS.indexOf("tie")] = tie;	// zondig
+//					currStrs.get(subNoteInd)[STRINGS.indexOf("tie")] = "tie='" + tie + "'";
 					currOnset = currOnset.add(currSubNoteDur);
 					currMetPos = Rational.ZERO;
 				}
@@ -1722,10 +1729,14 @@ public class MEIExport {
 				if (tieStr != null) {
 					// In order for the triplet to be fully tied, the last element cannot be i;
 					// the middle element cannot be i or t; and the first element cannot be t 
-					boolean isTied = 
-						j == indLast && (tieStr.equals("tie='m'") || tieStr.equals("tie='t'")) ||
-						(j < indLast && !isTripletOpen) && tieStr.equals("tie='m'") ||
-						isTripletOpen && (tieStr.equals("tie='i'") || tieStr.equals("tie='m'"));
+					boolean isTied = // zondig
+						j == indLast && (tieStr.equals("m") || tieStr.equals("t")) ||
+						(j < indLast && !isTripletOpen) && tieStr.equals("m") ||
+						isTripletOpen && (tieStr.equals("i") || tieStr.equals("m"));
+//					boolean isTied = 
+//						j == indLast && (tieStr.equals("tie='m'") || tieStr.equals("tie='t'")) ||
+//						(j < indLast && !isTripletOpen) && tieStr.equals("tie='m'") ||
+//						isTripletOpen && (tieStr.equals("tie='i'") || tieStr.equals("tie='m'"));
 					ties.add(isTied ? true : false);
 				}
 				if (isTripletOpen) {
@@ -1889,16 +1900,20 @@ public class MEIExport {
 					// If str has 
 					// (a) tie='i' or 'm': OK (remainder set to 'm')
 					// (b) tie='t': NOK, set to 'm' (remainder set to 't')
-					if (strTie.equals("tie='t'")) {
-						currStr[STRINGS.indexOf("tie")] = "tie='m'";
+					if (strTie.equals("t")) { // zondig
+//					if (strTie.equals("tie='t'")) {
+						currStr[STRINGS.indexOf("tie")] = "m"; // zondig
+//						currStr[STRINGS.indexOf("tie")] = "tie='m'";
 					}
 				}
 				else {
 					// If str has 
 					// (a) tie='i' or 'm': NOK, set to 'm'
 					// (b) tie='t': OK
-					if (strTie.equals("tie='i'")) {
-						currStr[STRINGS.indexOf("tie")] = "tie='m'";
+					if (strTie.equals("i")) { // zondig
+//					if (strTie.equals("tie='i'")) {
+						currStr[STRINGS.indexOf("tie")] = "m"; // zondig
+//						currStr[STRINGS.indexOf("tie")] = "tie='m'";
 					}
 				}
 			}
@@ -1943,7 +1958,8 @@ public class MEIExport {
 		if (allTied) {
 			// Tie for the first element (which can only be i or m) must be retained 
 			// only if tie for the last element (which can only be m or t) is m
-			if (strs.get(indLast)[STRINGS.indexOf("tie")].equals("tie='t'")) {
+			if (strs.get(indLast)[STRINGS.indexOf("tie")].equals("t")) { // zondig
+//			if (strs.get(indLast)[STRINGS.indexOf("tie")].equals("tie='t'")) {	
 				strs.get(indOpen)[STRINGS.indexOf("tie")] = null;
 			}
 		}
@@ -3105,7 +3121,7 @@ public class MEIExport {
 
 		if (path != null) { 
 			ToolBox.storeTextFile(
-				res, new File(path + "-" + (grandStaff ? "grand_staff" : "score") + ".xml")
+				res, new File(path + "-" + (grandStaff ? "grand_staff" : "score") + MEI_EXT)
 			);
 			return null;
 		}

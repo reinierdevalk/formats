@@ -49,7 +49,7 @@ public class MIDIImport {
 			});
 		
 		for (String s : pieces) {
-			String piece = s + ".mid";
+			String piece = s + EXTENSION;
 			File curr = new File("F:/research/data/annotated/MIDI/bach-WTC/thesis/5vv/" + piece);
 			File gith = new File("I:/removed_from_research-software-github/data-old/ISMIR-2018/" + piece);
 		

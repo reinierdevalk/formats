@@ -63,12 +63,9 @@ public class Editor extends JFrame{
 
 	private static final Font FONT = new Font("Courier New", Font.PLAIN, 12);
 	private static final String ASCII = "ASCII tab";
-	private static final String ASCII_EXTENSION = ".tab";
 	private static final String TC = "TabCode";
-	private static final String TC_EXTENSION = ".tc";
 	private static final String MEI = "MEI";
-	private static final String MEI_EXTENSION = ".xml";
-	private static final String MEI_EXTENSION_ALT = ".mei";
+//	private static final String MEI_EXTENSION_ALT = ".mei";
 	private static final String TBP = "tab+";
 	private static final String[] TITLE = new String[]{
 		"untitled", Encoding.EXTENSION, " - " + "tab+Editor"
@@ -76,10 +73,10 @@ public class Editor extends JFrame{
 
 	private static final Map<String, String> EXTENSIONS;
 	static { EXTENSIONS = new LinkedHashMap<String, String>();
-		EXTENSIONS.put(ASCII_EXTENSION, ASCII);
-		EXTENSIONS.put(TC_EXTENSION, TC);
-		EXTENSIONS.put(MEI_EXTENSION, MEI);
-		EXTENSIONS.put(MEI_EXTENSION_ALT, MEI);
+		EXTENSIONS.put(TabImport.TAB_EXT, ASCII);
+		EXTENSIONS.put(TabImport.TC_EXT, TC);
+		EXTENSIONS.put(MEIExport.MEI_EXT, MEI);
+		EXTENSIONS.put(MEIExport.MEI_EXT_ALT, MEI);
 		EXTENSIONS.put(Encoding.EXTENSION, TBP);
 	}
 
@@ -277,8 +274,8 @@ public class Editor extends JFrame{
 			// Add JMenu with JMenuItems
 			else {
 				JMenu mm = new JMenu(s);
-				for (String ss : (s.equals("Import") ? Arrays.asList(ASCII_EXTENSION, TC_EXTENSION) : 
-					Arrays.asList(ASCII_EXTENSION, MEI_EXTENSION))) {
+				for (String ss : (s.equals("Import") ? Arrays.asList(TabImport.TAB_EXT, TabImport.TC_EXT) : 
+					Arrays.asList(TabImport.TAB_EXT, MEIExport.MEI_EXT))) {
 					JMenuItem mi = new JMenuItem(EXTENSIONS.get(ss));
 					mi.addActionListener(defineActionListener(s, ss));
 					mm.add(mi);

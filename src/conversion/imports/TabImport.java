@@ -70,6 +70,9 @@ public class TabImport {
 		RHYTHM_SYMBOLS.put("S.", Symbol.FUSA.makeVariant(1, false, false).get(0).getEncoding());
 		RHYTHM_SYMBOLS.put("3", RhythmSymbol.TRIPLET_INDICATOR);
 	}
+	
+	public static final String TC_EXT = ".tc";
+	public static final String TAB_EXT = ".tab";
 
 
 	public static void main(String[] args) {
@@ -201,7 +204,7 @@ public class TabImport {
 			// All pieces in a folder
 			pieces = Stream.of(new File(path).listFiles())
 //				.filter(file -> !file.isDirectory())
-				.filter(file -> file.getName().endsWith(".tc"))
+				.filter(file -> file.getName().endsWith(TC_EXT))
 				.map(File::getName)
 				.collect(Collectors.toList());
 			for (int i = 0;i < pieces.size(); i++) {
@@ -212,7 +215,7 @@ public class TabImport {
 			
 			// From TabCode
 			for (String s : pieces) {
-				File f = new File(path + s + ".tc");
+				File f = new File(path + s + TC_EXT);
 				System.out.println(f);
 				String tc = ToolBox.readTextFile(f).trim();
 				tbp = tc2tbp(tc);
@@ -222,7 +225,7 @@ public class TabImport {
 
 			// From ASCII
 			for (String s : pieces) {
-				File f = new File(path + s + ".tab");
+				File f = new File(path + s + TAB_EXT);
 				String ascii = ToolBox.readTextFile(f).trim();
 				tbp = ascii2tbp(ascii);
 				ToolBox.storeTextFile(tbp, new File(path + s + "XXX" + Encoding.EXTENSION));
@@ -232,7 +235,7 @@ public class TabImport {
 			String inPath = args[0];
 			String outPath = args[1];
 			String filename = args[2];
-			File f = new File(inPath + "/" + filename + ".tc");
+			File f = new File(inPath + "/" + filename + TC_EXT);
 			System.out.println("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
 			System.out.println(f);
 			String tc = ToolBox.readTextFile(f).trim();
@@ -336,7 +339,7 @@ public class TabImport {
 		StringBuffer metadataStr = 
 			new StringBuffer(createMetaData(metadata, Encoding.METADATA_TAGS));
 		
-		System.out.println(metadataStr.toString());
+//		System.out.println(metadataStr.toString());
 //		System.exit(0);
 		
 //		StringBuffer metadataStr = new StringBuffer(Encoding.createMetadata(metadata));
@@ -505,9 +508,9 @@ public class TabImport {
 				String converted = convertTabword(tabword, false);
 //				asTbp += converted;
 				
-				System.out.println("^^^^^^^^^^^^^^^^");
-				System.out.println(tabword);
-				System.out.println(converted);
+//				System.out.println("^^^^^^^^^^^^^^^^");
+//				System.out.println(tabword);
+//				System.out.println(converted);
 
 				String rs = converted.substring(0, converted.indexOf(ss));
 //@				System.out.println(rs);
@@ -668,7 +671,7 @@ public class TabImport {
 		String rs = "";
 		String convertedRS = "";
 		String tabwordNoRS = "";
-		System.out.println(tabword);
+//		System.out.println(tabword);
 		// Regular RS
 		if (RHYTHM_SYMBOLS.containsKey(tabword.substring(0, 1))) {
 			// Take into account dotted RS and (dotted) triplet
@@ -1223,8 +1226,8 @@ public class TabImport {
 				break;
 			}
 		}
-		System.out.println(tss);
-		System.out.println(tuning);
+//		System.out.println(tss);
+//		System.out.println(tuning);
 
 //		// Determine tuning and tss
 //		List<String> tuningStringIndiv = new ArrayList<>();
@@ -1288,10 +1291,10 @@ public class TabImport {
 //			}
 //		}
 		allChords.add(Arrays.asList(new String[]{tss, tuning}));
-		System.out.println(tss);
-		for (List<String> s : allChords) {
-			System.out.println(s);
-		}
+//		System.out.println(tss);
+//		for (List<String> s : allChords) {
+//			System.out.println(s);
+//		}
 //		System.exit(0);
 		return allChords;
 	}
@@ -1329,7 +1332,7 @@ public class TabImport {
 				}
 				// Non-barline or repeat dots event
 				if (!(event.equals(BARLINE_EVENT) || event.equals(REPEAT_DOTS_EVENT))) {
-					System.out.println("iehievent = " + event);
+//					System.out.println("iehievent = " + event);
 					if (!tieActive) {
 						String tabPlusChord;
 						// MS
