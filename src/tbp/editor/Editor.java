@@ -53,6 +53,7 @@ import internal.core.Encoding.Stage;
 import tbp.symbols.Symbol;
 import tbp.symbols.TabSymbol.TabSymbolSet;
 import tools.ToolBox;
+import tools.path.PathTools;
 
 /**
  * @author Reinier de Valk
@@ -114,6 +115,9 @@ public class Editor extends JFrame{
 	// https://stackoverflow.com/questions/8852560/how-to-make-popup-window-in-java
 	// try-catch block is only needed when reading from a File using a BufferedReader
 	public static void main(String[] args) {
+		Map<String, String> paths = PathTools.getPaths();
+		String tp = paths.get("TEMPLATES_PATH");
+		MEIExport.setTemplatesPath(tp);
 		new Editor();
 	}
 
@@ -138,7 +142,8 @@ public class Editor extends JFrame{
 		setTabTextArea();
 		setTabStyleButtonGroup();
 		setRhythmFlagsCheckBox();
-		setFileChooser(new File("F:/research/data/user/in/"));
+		setFileChooser(new File("F:/research/computation/tool_data/converter/"));
+//		setFileChooser(new File("F:/research/data/user/in/"));
 //		setFileChooser(new File(paths.get(Path.DEPLOYMENT_DEV_PATH + Path.ENCODINGS_PATH)); 
 		setFile(null);
 		setImportFile(null);
@@ -647,16 +652,20 @@ public class Editor extends JFrame{
 				}
 				// Export case
 				else {
+					String fname = "rore-anchor_che_col"; // TODO
 					Encoding e = new Encoding(
-						etaContent, FilenameUtils.getBaseName(getFile().getName()), Stage.RULES_CHECKED
+						etaContent, fname, Stage.RULES_CHECKED
 					);
+//					Encoding e = new Encoding(
+//						etaContent, FilenameUtils.getBaseName(getFile().getName()), Stage.RULES_CHECKED
+//					);
 					if (exportType.equals(ASCII)) {
 						content = makeASCIITab(e);
 					}
 					else if (exportType.equals(MEI)) {
 						content = MEIExport.exportMEIFile(
 							null, new Tablature(e, false), null, false, false, /*true,*/ 
-							new String[]{null, "tab+Editor"}
+							new String[]{null, "abtab -- converter"}
 						);
 					}
 				}

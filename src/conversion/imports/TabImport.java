@@ -794,8 +794,7 @@ public class TabImport {
 	public static String ascii2tbp(String ascii) {
 		// Make encoding
 		List<List<String>> systemContents = getSystemContents(getSystems(ascii));
-		System.out.println("ccccccccccccccccccccccccccc");
-		systemContents.get(0).forEach(s -> System.out.println(s));
+//		systemContents.get(0).forEach(s -> System.out.println(s));
 		StringBuffer enc = getEncoding(systemContents);
 
 		// Make metadataString
@@ -1384,7 +1383,7 @@ public class TabImport {
 							if (tss.equals(TabSymbolSet.ITALIAN.getName())) {
 								chordOnly = new StringBuilder(chordOnly).reverse().toString();
 							}
-							System.out.println("CO = " + chordOnly);
+//							System.out.println("CO = " + chordOnly);
 							char[] chordAsArr = chordOnly.toCharArray();
 							for (int k = numCourses-1; k >= 0; k--) {
 								char currChar = chordAsArr[k];
@@ -1395,7 +1394,7 @@ public class TabImport {
 									tabPlusChord += fret + course + ss;
 								}
 							}
-							System.out.println(tabPlusChord);
+//							System.out.println(tabPlusChord);
 						}
 						tabPlusChord += space + ss;
 						currSystem.append(tabPlusChord);

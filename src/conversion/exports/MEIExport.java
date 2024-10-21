@@ -65,8 +65,8 @@ public class MEIExport {
 	private static boolean TAB_ON_TOP, GRAND_STAFF;
 	private static boolean verbose = false;
 
-	private static String templatePath;
-	private static String pythonScriptPath;
+	private static String templatesPath;
+	private static String pythonPath;
 
 
 	public static void main(String[] args) {
@@ -183,13 +183,13 @@ public class MEIExport {
 	//  S E T T E R S  
 	//  for instance variables
 	//
-	public static void setTemplatePath(String arg) {
-		templatePath = arg;
+	public static void setTemplatesPath(String arg) {
+		templatesPath = arg;
 	}
 
 
-	public static void setPythonScriptPath(String arg) {
-		pythonScriptPath = arg;
+	public static void setPythonPath(String arg) {
+		pythonPath = arg;
 	}
 
 
@@ -198,13 +198,13 @@ public class MEIExport {
 	//  G E T T E R S  
 	//  for instance variables
 	//
-	public static String getTemplatePath() {
-		return templatePath;
+	public static String getTemplatesPath() {
+		return templatesPath;
 	}
 
 
-	public static String getPythonScriptPath() {
-		return pythonScriptPath;
+	public static String getPythonPath() {
+		return pythonPath;
 	}
 
 
@@ -219,20 +219,21 @@ public class MEIExport {
 	 *              (i.e., one that has basicNoteProperties).
 	 * @param tab
 	 * @param mismatchInds
-	 * @param grandStaff
+	 * @param score
 	 * @param tabOnTop
 	 * @param dict
 	 */
 	public static String exportMEIFile(Transcription trans, Tablature tab, 
-		List<List<Integer>> mismatchInds, boolean grandStaff, boolean tabOnTop, String[] dict) {
-		System.out.println("\r\n>>> MEIExport.exportMEIFile() called");
+		List<List<Integer>> mismatchInds, boolean score, boolean tabOnTop, String[] dict) {
+//l		System.out.println("\r\n>>> MEIExport.exportMEIFile() called");
 
 		String INDENT_SCORE = TAB.repeat(4); // for the <score>
 		String INDENT_ONE = INDENT_SCORE + TAB; // for the main <scoreDef> and all <section>s
 		String INDENT_TWO = INDENT_SCORE + TAB.repeat(2); // for the first child of each <section>
 
-		Map<String, String> paths = PathTools.getPaths();
-		String tp = PathTools.getPathString(Arrays.asList(paths.get("TEMPLATES_PATH")));
+//		Map<String, String> paths = PathTools.getPaths();
+//		String tp = PathTools.getPathString(Arrays.asList(paths.get("TEMPLATES_PATH")));
+
 //		String tp = getTemplatePath();		
 //		if (tp == null) {
 //			tp = PathTools.getPathString(Arrays.asList(
@@ -243,14 +244,16 @@ public class MEIExport {
 //			setTemplatePath(tp);
 //			tp = getTemplatePath();
 //		}
-		String mei = ToolBox.readTextFile(new File(tp + "template-MEI.xml"));
+		
+		String mei = ToolBox.readTextFile(new File(getTemplatesPath() + "template-MEI.xml"));
+//		String mei = ToolBox.readTextFile(new File(tp + "template-MEI.xml"));
 		String path = dict[0];
 
 		ONLY_TAB = tab != null && trans == null;
 		TAB_AND_TRANS = tab != null && trans != null;
 		ONLY_TRANS = tab == null && trans != null;
 		TAB_ON_TOP = tabOnTop;
-		GRAND_STAFF = grandStaff;
+		GRAND_STAFF = !score;
 
 		List<Integer[]> mi = 
 			ONLY_TAB || TAB_AND_TRANS ? tab.getMeterInfoAgnostic() : trans.getMeterInfo();
@@ -372,7 +375,7 @@ public class MEIExport {
 
 	private static List<List<String>> makeScoreDefs(Tablature tab, List<Integer[]> mi, 
 		List<Integer[]> ki, List<Integer> sectionBars, int numVoices) {
-		System.out.println("\r\n>>> makeScoreDefs() called");
+//l		System.out.println("\r\n>>> makeScoreDefs() called");
 
 		// The <scoreDef> contains a <staffGrp>, which contains one (TAB_ONLY case) or more 
 		// (other cases) <staffDef>s. In the TAB_AND_TRANS case, the <staffDef>s for 
@@ -654,7 +657,7 @@ public class MEIExport {
 
 
 	private static List<List<String>> getTabBars(Tablature tab, int numVoices) {
-		System.out.println("\r\n>>> getTabBars() called");
+//l		System.out.println("\r\n>>> getTabBars() called");
 		List<List<String>> tabBars = new ArrayList<>();
 
 		Integer[] sl = getStaffAndLayer(
@@ -1024,7 +1027,7 @@ public class MEIExport {
 	 */
 	private static List<Object> getData(Tablature tab, Transcription trans, List<Integer[]> mi, 
 		List<Integer[]> ki, List<Rational[]> tripletOnsetPairs) {
-		System.out.println("\r\n>>> getData() called");
+//l		System.out.println("\r\n>>> getData() called");
 
 		Integer[][] bnp = trans.getBasicNoteProperties();
 		Integer[][] btp = null;
@@ -2045,7 +2048,7 @@ public class MEIExport {
 
 	private static List<Object> beam(/*Tablature tab,*/ List<Object> data, List<Integer[]> mi, // dimmid
 		List<Rational[]> tripletOnsetPairs, List<List<Integer>> mismatchInds, int numVoices) {
-		System.out.println(">>> beam() called");
+//		System.out.println(">>> beam() called");
 
 		// ints and strs are organised per bar, voice, note
 		List<List<List<Integer[]>>> ints = (List<List<List<Integer[]>>>) data.get(0);
@@ -2080,7 +2083,7 @@ public class MEIExport {
 		}
 		// Store unbeamed as text file // TODO find cleaner solution
 		// NB: the stored file ends with a line break
-		String psp = getPythonScriptPath();
+		String psp = getPythonPath();
 		String fName = psp + "unbeamed.txt";
 		File f = new File(fName);
 		StringBuilder sb = new StringBuilder();
@@ -2263,7 +2266,7 @@ public class MEIExport {
 						if (isMappingCase) {
 							clrs = Arrays.asList(new String[]{null, "blue", "lime", "orange", "red"});
 							for (int j : Arrays.asList(Transcription.ORNAMENTATION_IND, 
-								Transcription.REPETITION_IND, Transcription.FICTA_IND,Transcription.OTHER_IND)) {
+								Transcription.REPETITION_IND, Transcription.FICTA_IND,Transcription.ADAPTATION_IND)) {
 								if (mismatchInds.get(j).contains(tabInd)) {
 									attsList.add(new String[]{"color", clrs.get(j)});
 									break;
@@ -2314,7 +2317,7 @@ public class MEIExport {
 
 	private static List<List<String>> getTransBars(/*Tablature tab,*/ List<Object> data, // dimmid
 		List<Rational[]> tripletOnsetPairs, List<List<Integer>> mismatchInds, int numVoices) {
-		System.out.println("\r\n>>> getTransBars() called");
+//l		System.out.println("\r\n>>> getTransBars() called");
 		List<List<String>> transBars = new ArrayList<>();
 
 		List<List<List<Integer[]>>> ints = (List<List<List<Integer[]>>>) data.get(0);
@@ -2817,12 +2820,12 @@ public class MEIExport {
 		String INDENT_ONE = TAB.repeat(5);
 		String INDENT_TWO = TAB.repeat(6);
 
-		if (getTemplatePath() == null) {
-			setTemplatePath("F:/research/data/" + "templates/");
+		if (getTemplatesPath() == null) {
+			setTemplatesPath("F:/research/data/" + "templates/");
 //			setTemplatePath(Path.DEPLOYMENT_DEV_PATH + Path.TEEMPLATES_DIR);
 		}
 
-		String res = ToolBox.readTextFile(new File(getTemplatePath() + "template-MEI.xml"));
+		String res = ToolBox.readTextFile(new File(getTemplatesPath() + "template-MEI.xml"));
 		String path = dict[0];
 		String app = dict[1];
 
@@ -5160,7 +5163,7 @@ public class MEIExport {
 			orn = mismatchInds.get(Transcription.ORNAMENTATION_IND);
 			rep = mismatchInds.get(Transcription.REPETITION_IND);
 			ficta = mismatchInds.get(Transcription.FICTA_IND);
-			other = mismatchInds.get(Transcription.OTHER_IND);
+			other = mismatchInds.get(Transcription.ADAPTATION_IND);
 		}
 		// Modelling case
 		else {
