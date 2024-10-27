@@ -1,26 +1,30 @@
 package conversion.exports;
 
+import static org.junit.Assert.*;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
 import external.Transcription;
-import junit.framework.TestCase;
 import tools.path.PathTools;
 
-public class MIDIExportTest extends TestCase {
+public class MIDIExportTest {
 
 //	private File midiTestGetMeterInfoDiminuted;
 	private File midiTestGetMeterInfo;
 
-	@Override
-	protected void setUp() throws Exception {
-		super.setUp();
+	@Before
+	public void setUp() throws Exception {
 //		Runner.setPathsToCodeAndData(UI.getRootDir(), false);
 //		midiTestGetMeterInfoDiminuted = new File(Runner.midiPathTest + "test_get_meter_key_info_diminuted.mid");
-		Map<String, String> paths = PathTools.getPaths();
+		Map<String, String> paths = PathTools.getPaths(true);
 		String mp = paths.get("MIDI_PATH");
 		String td = "test";
 		midiTestGetMeterInfo = new File(PathTools.getPathString(
@@ -29,12 +33,12 @@ public class MIDIExportTest extends TestCase {
 //		midiTestGetMeterInfoDiminuted = new File(MEIExport.rootDir + "data/annotated/MIDI/test/" + "test_get_meter_key_info_diminuted.mid");
 	}
 
-	@Override
-	protected void tearDown() throws Exception {
-		super.tearDown();
+	@After
+	public void tearDown() throws Exception {
 	}
 
 
+	@Test
 	public void testGetTimeSigTicks() {
 		Transcription t = new Transcription(midiTestGetMeterInfo);
 

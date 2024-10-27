@@ -115,9 +115,9 @@ public class Editor extends JFrame{
 	// https://stackoverflow.com/questions/8852560/how-to-make-popup-window-in-java
 	// try-catch block is only needed when reading from a File using a BufferedReader
 	public static void main(String[] args) {
-		Map<String, String> paths = PathTools.getPaths();
-		String tp = paths.get("TEMPLATES_PATH");
-		MEIExport.setTemplatesPath(tp);
+		boolean dev = args.length == 0 ? true : args[0].equals(String.valueOf(true));
+		Map<String, String> paths = PathTools.getPaths(dev);
+		MEIExport.setTemplatesPath(paths.get("TEMPLATES_PATH"));
 		new Editor();
 	}
 

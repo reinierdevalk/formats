@@ -10,7 +10,7 @@
 	<classpathentry combineaccessrules="false" kind="src" path="/musitech"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/representations"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/utils"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
 	<classpathentry kind="lib" path="/representations/lib/commons-io-2.11.0.jar"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

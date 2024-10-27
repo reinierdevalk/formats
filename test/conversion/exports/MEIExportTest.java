@@ -1,22 +1,27 @@
 package conversion.exports;
 
+import static org.junit.Assert.*;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
 import de.uos.fmt.musitech.utility.math.Rational;
 import external.Tablature;
 import external.Transcription;
 import internal.core.Encoding;
 import internal.structure.Event;
-import junit.framework.TestCase;
 import tbp.symbols.Symbol;
 import tools.ToolBox;
 import tools.path.PathTools;
 
-public class MEIExportTest extends TestCase {
+public class MEIExportTest {
 
 	private File encodingTestpiece;
 	private File encodingNewsidler;
@@ -31,11 +36,10 @@ public class MEIExportTest extends TestCase {
 	private final Rational r4 = new Rational(1, 4);
 	private final Rational r2 = new Rational(1, 2);
 	private final Rational r1 = new Rational(1, 1);
-		
-	@Override
-	protected void setUp() throws Exception {
-		super.setUp();
-		Map<String, String> paths = PathTools.getPaths();
+
+	@Before
+	public void setUp() throws Exception {
+		Map<String, String> paths = PathTools.getPaths(true);
 		String ep = paths.get("ENCODINGS_PATH");
 		String td = "test";
 		String mp = paths.get("MIDI_PATH");
@@ -54,12 +58,12 @@ public class MEIExportTest extends TestCase {
 	}
 
 
-	@Override
-	protected void tearDown() throws Exception {
-		super.tearDown();
+	@After
+	public void tearDown() throws Exception {
 	}
 
 
+	@Test
 	public void testRebarKeyInfo() {
 		Tablature t1 = new Tablature(encodingTestpiece, false);
 		Transcription tr1 = new Transcription(midiTestpiece, encodingTestpiece);
@@ -110,6 +114,7 @@ public class MEIExportTest extends TestCase {
 	}
 
 
+	@Test
 	public void testAlignMeterAndKeyinfo() {
 		Tablature t1 = new Tablature(encodingTestpiece, false);
 		Transcription tr1 = new Transcription(midiTestpiece, encodingTestpiece);
@@ -186,6 +191,7 @@ public class MEIExportTest extends TestCase {
 	}
 
 
+	@Test
 	public void testGetStaffAndLayer() {
 		List<Integer[]> expected = Arrays.asList(
 			new Integer[]{1, 1},
@@ -239,6 +245,7 @@ public class MEIExportTest extends TestCase {
 	}
 
 
+	@Test
 	public void testGetCleffing() {
 		String[] g = new String[]{"G", "2"};
 		String[] f = new String[]{"F", "4"};
@@ -294,6 +301,7 @@ public class MEIExportTest extends TestCase {
 	}
 
 
+	@Test
 	public void testMakeOpeningTag() {
 		List<String> expected = Arrays.asList(
 			"<note pname='c' oct='4' dur='4' xml:id='n1'/>", 
@@ -320,6 +328,7 @@ public class MEIExportTest extends TestCase {
 	}
 
 
+	@Test
 	public void testGetXMLDur() {
 		Encoding encoding = new Encoding(encodingTestpiece);
 		
@@ -372,12 +381,15 @@ public class MEIExportTest extends TestCase {
 				}
 			}
 			else {
-				assertEquals(expected.get(i), actual.get(i));
+				assertNull(expected.get(i));
+				assertNull(actual.get(i));
+//				assertEquals(expected.get(i), actual.get(i));
 			}
 		}
 	}
 
 
+	@Test
 	public void testGetXMLDurAlt() {
 		List<Rational> rs = Arrays.asList(
 			Rational.ONE,
@@ -404,6 +416,7 @@ public class MEIExportTest extends TestCase {
 	}
 
 
+	@Test
 	public void testMakeNoteXMLID() {
 		List<String> expected = Arrays.asList(
 			"n0.0.1.0.c4.0:1",
@@ -424,6 +437,7 @@ public class MEIExportTest extends TestCase {
 	}
 
 
+	@Test
 	public void testMakeRestXMLID() {
 		List<String> expected = Arrays.asList(
 			"r.0.1.0.0:1",
@@ -444,6 +458,7 @@ public class MEIExportTest extends TestCase {
 	}
 
 
+	@Test
 	public void testGetDurFromXMLDur() {
 		List<Integer> expected = Arrays.asList(
 			96, 144, 168, // brevis; 0, 1, 2 dots

@@ -28,7 +28,7 @@ public class TabImportTest {
 
 	@Test
 	public void testCreateMeterInfoString() {
-		Map<String, String> paths = PathTools.getPaths();
+		Map<String, String> paths = PathTools.getPaths(true);
 		String ep = paths.get("ENCODINGS_PATH");
 		
 		List<String> testPieces = Arrays.asList(new String[]{

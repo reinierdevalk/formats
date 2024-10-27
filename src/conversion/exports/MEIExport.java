@@ -231,7 +231,7 @@ public class MEIExport {
 		String INDENT_ONE = INDENT_SCORE + TAB; // for the main <scoreDef> and all <section>s
 		String INDENT_TWO = INDENT_SCORE + TAB.repeat(2); // for the first child of each <section>
 
-//		Map<String, String> paths = PathTools.getPaths();
+
 //		String tp = PathTools.getPathString(Arrays.asList(paths.get("TEMPLATES_PATH")));
 
 //		String tp = getTemplatePath();		
