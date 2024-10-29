@@ -232,18 +232,7 @@ public class MEIExport {
 		String INDENT_TWO = INDENT_SCORE + TAB.repeat(2); // for the first child of each <section>
 
 
-//		String tp = PathTools.getPathString(Arrays.asList(paths.get("TEMPLATES_PATH")));
 
-//		String tp = getTemplatePath();		
-//		if (tp == null) {
-//			tp = PathTools.getPathString(Arrays.asList(
-////				paths.get("DEPLOYMENT_DEV_PATH"),
-////				paths.get("TEEMPLATES_DIR")
-//				paths.get("TEMPLATES_PATH")
-//			));
-//			setTemplatePath(tp);
-//			tp = getTemplatePath();
-//		}
 		
 		String mei = ToolBox.readTextFile(new File(getTemplatesPath() + "template-MEI.xml"));
 //		String mei = ToolBox.readTextFile(new File(tp + "template-MEI.xml"));

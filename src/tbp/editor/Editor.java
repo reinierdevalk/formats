@@ -118,7 +118,7 @@ public class Editor extends JFrame{
 		boolean dev = args.length == 0 ? true : args[0].equals(String.valueOf(true));
 		Map<String, String> paths = PathTools.getPaths(dev);
 		MEIExport.setTemplatesPath(paths.get("TEMPLATES_PATH"));
-		new Editor();
+		new Editor(paths);
 	}
 
 
@@ -129,22 +129,22 @@ public class Editor extends JFrame{
 	/**
 	 * Creates a Viewer (JFrame) containing a JMenuBar and a Container with graphical elements.
 	 */
-	public Editor() {
+	public Editor(Map<String, String> paths) {
 		super();
-		init();
+		init(paths);
 	}
 
 
-	private void init() {
+	private void init(Map<String, String> paths) {
 		// a. Viewer instance variables
 		setHighlighter();
 		setEncodingTextArea();
 		setTabTextArea();
 		setTabStyleButtonGroup();
 		setRhythmFlagsCheckBox();
-		setFileChooser(new File("F:/research/computation/tool_data/converter/"));
+		setFileChooser(new File(PathTools.getPathString(Arrays.asList(paths.get("CONVERTER_PATH")))));
+//		setFileChooser(new File("F:/research/computation/tool_data/converter/"));
 //		setFileChooser(new File("F:/research/data/user/in/"));
-//		setFileChooser(new File(paths.get(Path.DEPLOYMENT_DEV_PATH + Path.ENCODINGS_PATH)); 
 		setFile(null);
 		setImportFile(null);
 		// b. JFrame instance variables
