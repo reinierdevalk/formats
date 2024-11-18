@@ -13,6 +13,7 @@ import java.util.stream.Stream;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 
+import conversion.exports.MEIExport;
 import external.Tablature;
 import external.Tablature.Tuning;
 import internal.core.Encoding;
@@ -70,9 +71,16 @@ public class TabImport {
 		RHYTHM_SYMBOLS.put("S.", Symbol.FUSA.makeVariant(1, false, false).get(0).getEncoding());
 		RHYTHM_SYMBOLS.put("3", RhythmSymbol.TRIPLET_INDICATOR);
 	}
-	
+
 	public static final String TC_EXT = ".tc";
 	public static final String TAB_EXT = ".tab";
+
+	public static final List<String> ALLOWED_FILE_FORMATS = Arrays.asList(
+		Encoding.EXTENSION, 
+		TC_EXT, 
+		MEIExport.MEI_EXT, 
+		MEIExport.MEI_EXT_ALT
+	);
 
 
 	public static void main(String[] args) {

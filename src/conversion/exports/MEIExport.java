@@ -65,8 +65,8 @@ public class MEIExport {
 	private static boolean TAB_ON_TOP, GRAND_STAFF;
 	private static boolean verbose = false;
 
-	private static String templatesPath;
-	private static String pythonPath;
+//	private static String templatesPath;
+//	private static String pythonPath;
 
 
 	public static void main(String[] args) {
@@ -165,8 +165,9 @@ public class MEIExport {
 		
 //		List<Integer[]> mi = (tab == null) ? trans.getMeterInfo() : tab.getMeterInfo();
 		
+		Map<String, String> paths = null;
 		exportMEIFile(trans, tab, /*tab.getBasicTabSymbolProperties(), trans.getKeyInfo(), 
-			tab.getTripletOnsetPairs(),*/ mismatchInds, grandStaff, tabOnTop, 
+			tab.getTripletOnsetPairs(),*/ mismatchInds, grandStaff, tabOnTop, paths, 
 			/*alignWithMetricBarring,*/ new String[]{s, ""});
 //		System.out.println(ToolBox.readTextFile(new File(s)));
 
@@ -183,14 +184,14 @@ public class MEIExport {
 	//  S E T T E R S  
 	//  for instance variables
 	//
-	public static void setTemplatesPath(String arg) {
-		templatesPath = arg;
-	}
+//	public static void setTemplatesPath(String arg) {
+//		templatesPath = arg;
+//	}
 
 
-	public static void setPythonPath(String arg) {
-		pythonPath = arg;
-	}
+//	public static void setPythonPath(String arg) {
+//		pythonPath = arg;
+//	}
 
 
 	//////////////////////////////
@@ -198,14 +199,14 @@ public class MEIExport {
 	//  G E T T E R S  
 	//  for instance variables
 	//
-	public static String getTemplatesPath() {
-		return templatesPath;
-	}
+//	public static String getTemplatesPath() {
+//		return templatesPath;
+//	}
 
 
-	public static String getPythonPath() {
-		return pythonPath;
-	}
+//	public static String getPythonPath() {
+//		return pythonPath;
+//	}
 
 
 	////////////////////////////////
@@ -221,20 +222,20 @@ public class MEIExport {
 	 * @param mismatchInds
 	 * @param score
 	 * @param tabOnTop
+	 * @param paths
 	 * @param dict
 	 */
-	public static String exportMEIFile(Transcription trans, Tablature tab, 
-		List<List<Integer>> mismatchInds, boolean score, boolean tabOnTop, String[] dict) {
+	public static String exportMEIFile(Transcription trans, Tablature tab, List<List<Integer>> mismatchInds, 
+		boolean score, boolean tabOnTop, Map<String, String> paths, String[] dict) {
 //l		System.out.println("\r\n>>> MEIExport.exportMEIFile() called");
 
 		String INDENT_SCORE = TAB.repeat(4); // for the <score>
 		String INDENT_ONE = INDENT_SCORE + TAB; // for the main <scoreDef> and all <section>s
 		String INDENT_TWO = INDENT_SCORE + TAB.repeat(2); // for the first child of each <section>
 
-
-
-		
-		String mei = ToolBox.readTextFile(new File(getTemplatesPath() + "template-MEI.xml"));
+		String tp = PathTools.getPathString(Arrays.asList(paths.get("TEMPLATES_PATH")));
+		String mei = ToolBox.readTextFile(new File(tp + paths.get("MEI_TEMPLATE")));
+//		String mei = ToolBox.readTextFile(new File(getTemplatesPath() + "template-MEI.xml"));
 //		String mei = ToolBox.readTextFile(new File(tp + "template-MEI.xml"));
 		String path = dict[0];
 
@@ -294,7 +295,7 @@ public class MEIExport {
 		if (TAB_AND_TRANS || ONLY_TRANS) {
 			List<Rational[]> tripletOnsetPairs = TAB_AND_TRANS ? tab.getTripletOnsetPairs() : null;
 			List<Object> data = getData(tab, trans, mi, ki, tripletOnsetPairs);				
-			data = beam(data, mi, tripletOnsetPairs, mismatchInds, numVoices);
+			data = beam(data, mi, tripletOnsetPairs, mismatchInds, paths, numVoices);
 			transBars = getTransBars(data, tripletOnsetPairs, mismatchInds, numVoices);
 		}
 		
@@ -2036,7 +2037,8 @@ public class MEIExport {
 
 
 	private static List<Object> beam(/*Tablature tab,*/ List<Object> data, List<Integer[]> mi, // dimmid
-		List<Rational[]> tripletOnsetPairs, List<List<Integer>> mismatchInds, int numVoices) {
+		List<Rational[]> tripletOnsetPairs, List<List<Integer>> mismatchInds, Map<String, String> paths, 
+		int numVoices) {
 //		System.out.println(">>> beam() called");
 
 		// ints and strs are organised per bar, voice, note
@@ -2072,7 +2074,8 @@ public class MEIExport {
 		}
 		// Store unbeamed as text file // TODO find cleaner solution
 		// NB: the stored file ends with a line break
-		String psp = getPythonPath();
+		String psp = PathTools.getPathString(Arrays.asList(paths.get("UTILS_PYTHON_PATH")));
+//		String psp = getPythonPath();
 		String fName = psp + "unbeamed.txt";
 		File f = new File(fName);
 		StringBuilder sb = new StringBuilder();
@@ -2083,7 +2086,8 @@ public class MEIExport {
 		// NB: the output of the beaming script does not end with a line break, but 
 		// PythonInterface.runPythonFileAsScript() adds one to the end of it
 		String beamedStr = PythonInterface.runPythonFileAsScript(
-			new String[]{"python", psp + "beam.py", fName}
+			new String[]{"python", psp + paths.get("BEAM_SCRIPT"), fName}
+//			new String[]{"python", psp + "beam.py", fName}
 		);
 //		String beamedStr = "";
 //		try {
@@ -2809,12 +2813,12 @@ public class MEIExport {
 		String INDENT_ONE = TAB.repeat(5);
 		String INDENT_TWO = TAB.repeat(6);
 
-		if (getTemplatesPath() == null) {
-			setTemplatesPath("F:/research/data/" + "templates/");
+//		if (getTemplatesPath() == null) {
+//			setTemplatesPath("F:/research/data/" + "templates/");
 //			setTemplatePath(Path.DEPLOYMENT_DEV_PATH + Path.TEEMPLATES_DIR);
-		}
+//		}
 
-		String res = ToolBox.readTextFile(new File(getTemplatesPath() + "template-MEI.xml"));
+		String res = null; //ToolBox.readTextFile(new File(getTemplatesPath() + "template-MEI.xml"));
 		String path = dict[0];
 		String app = dict[1];
 

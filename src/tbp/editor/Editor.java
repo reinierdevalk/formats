@@ -103,6 +103,7 @@ public class Editor extends JFrame{
 	private ButtonGroup tabStyleButtonGroup;
 	private JCheckBox rhythmFlagsCheckBox;
 	private JFileChooser fileChooser;
+	private Map<String, String> paths;
 	private File file; // .tbp
 	private File importFile; // .tab or .tc
 
@@ -116,9 +117,8 @@ public class Editor extends JFrame{
 	// try-catch block is only needed when reading from a File using a BufferedReader
 	public static void main(String[] args) {
 		boolean dev = args.length == 0 ? true : args[0].equals(String.valueOf(true));
-		Map<String, String> paths = PathTools.getPaths(dev);
-		MEIExport.setTemplatesPath(paths.get("TEMPLATES_PATH"));
-		new Editor(paths);
+		Map<String, String> argPaths = PathTools.getPaths(dev);
+		new Editor(argPaths);
 	}
 
 
@@ -129,22 +129,23 @@ public class Editor extends JFrame{
 	/**
 	 * Creates a Viewer (JFrame) containing a JMenuBar and a Container with graphical elements.
 	 */
-	public Editor(Map<String, String> paths) {
+	public Editor(Map<String, String> argPaths) {
 		super();
-		init(paths);
+		init(argPaths);
 	}
 
 
-	private void init(Map<String, String> paths) {
+	private void init(Map<String, String> argPaths) {
 		// a. Viewer instance variables
 		setHighlighter();
 		setEncodingTextArea();
 		setTabTextArea();
 		setTabStyleButtonGroup();
 		setRhythmFlagsCheckBox();
-		setFileChooser(new File(PathTools.getPathString(Arrays.asList(paths.get("CONVERTER_PATH")))));
+		setFileChooser(new File(PathTools.getPathString(Arrays.asList(argPaths.get("CONVERTER_PATH")))));
 //		setFileChooser(new File("F:/research/computation/tool_data/converter/"));
 //		setFileChooser(new File("F:/research/data/user/in/"));
+		setPaths(argPaths);
 		setFile(null);
 		setImportFile(null);
 		// b. JFrame instance variables
@@ -251,6 +252,11 @@ public class Editor extends JFrame{
 		JFileChooser fc = new JFileChooser();
 		fc.setCurrentDirectory(f);
 		fileChooser = fc;
+	}
+
+
+	private void setPaths(Map<String, String> p) {
+		paths = p;
 	}
 
 
@@ -402,6 +408,11 @@ public class Editor extends JFrame{
 
 	private JFileChooser getFileChooser() {
 		return fileChooser;
+	}
+
+
+	private Map<String, String> getPaths() {
+		return paths;
 	}
 
 
@@ -664,7 +675,7 @@ public class Editor extends JFrame{
 					}
 					else if (exportType.equals(MEI)) {
 						content = MEIExport.exportMEIFile(
-							null, new Tablature(e, false), null, false, false, /*true,*/ 
+							null, new Tablature(e, false), null, false, false, getPaths(),
 							new String[]{null, "abtab -- converter"}
 						);
 					}
