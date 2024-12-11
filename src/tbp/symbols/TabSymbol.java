@@ -23,13 +23,14 @@ public class TabSymbol extends Symbol implements Serializable {
 	private int fingeringDots;
 
 	public static enum TabSymbolSet  {
-		FRENCH("French", "French", 8, null),
-		ITALIAN("Italian", "Italian", 8, null),
-		SPANISH("Spanish", "Spanish", 8, null),
-		JUDENKUENIG_1523("Judenkuenig1523", "German", 6, new String[]{"A", "B", "C", "D", "E", "F", "G", "H"}),
-		NEWSIDLER_1536("Newsidler1536", "German", 6, new String[]{"+", "A", "B", "C", "D", "E", "F", "G", "H"}),
-		OCHSENKUN_1558("Ochsenkun1558", "German", 6, new String[]{"+", "2-", "3-", "4-", "5-", "6-", "7-", "8-", "9-", "10-", "11-"}),
-		HECKEL_1562("Heckel1562", "German", 6, new String[]{"+", "A-", "F-", "L-", "Q-", "X-"});
+		FRENCH("French", "French", "FLT", 8, null),
+		ITALIAN("Italian", "Italian", "ILT", 8, null),
+		SPANISH("Spanish", "Spanish", "SLT", 8, null),
+		// TODO change to GLT_j, GLT_n, GLT_o, GLT_h?  
+		JUDENKUENIG_1523("Judenkuenig1523", "German", "", 6, new String[]{"A", "B", "C", "D", "E", "F", "G", "H"}),
+		NEWSIDLER_1536("Newsidler1536", "German", "GLT", 6, new String[]{"+", "A", "B", "C", "D", "E", "F", "G", "H"}),
+		OCHSENKUN_1558("Ochsenkun1558", "German", "", 6, new String[]{"+", "2-", "3-", "4-", "5-", "6-", "7-", "8-", "9-", "10-", "11-"}),
+		HECKEL_1562("Heckel1562", "German", "", 6, new String[]{"+", "A-", "F-", "L-", "Q-", "X-"});
 
 		public static final int FRETS_FRENCH = 0;
 		public static final int FRETS_GERMAN = 1;
@@ -62,12 +63,14 @@ public class TabSymbol extends Symbol implements Serializable {
 
 		private String name;
 		private String type;
+		private String shortType;
 		private int maxNumCourses;
 		private String[] fretsSixthCourse;
 
-		TabSymbolSet(String n, String t, int m, String[] f) {
+		TabSymbolSet(String n, String t, String a, int m, String[] f) {
 			name = n;
 			type = t;
+			shortType = a;
 			maxNumCourses = m;
 			fretsSixthCourse = f;
 		}
@@ -78,6 +81,10 @@ public class TabSymbol extends Symbol implements Serializable {
 
 		public String getType() {
 			return type;
+		}
+
+		public String getShortType() {
+			return shortType;
 		}
 
 		public int getMaxNumCourses() {

@@ -15,11 +15,11 @@ import org.junit.Test;
 import de.uos.fmt.musitech.utility.math.Rational;
 import external.Tablature;
 import external.Transcription;
+import interfaces.CLInterface;
 import internal.core.Encoding;
 import internal.structure.Event;
 import tbp.symbols.Symbol;
 import tools.ToolBox;
-import tools.path.PathTools;
 
 public class MEIExportTest {
 
@@ -39,20 +39,20 @@ public class MEIExportTest {
 
 	@Before
 	public void setUp() throws Exception {
-		Map<String, String> paths = PathTools.getPaths(true);
+		Map<String, String> paths = CLInterface.getPaths(true);
 		String ep = paths.get("ENCODINGS_PATH");
-		String td = "test";
+		String td = "test/5vv/";
 		String mp = paths.get("MIDI_PATH");
 		encodingTestpiece = new File(
-			PathTools.getPathString(Arrays.asList(ep, td)) + "testpiece.tbp"
+			CLInterface.getPathString(Arrays.asList(ep, td)) + "testpiece.tbp"
 		);
-		encodingNewsidler = new File(PathTools.getPathString(
+		encodingNewsidler = new File(CLInterface.getPathString(
 			Arrays.asList(ep, "thesis-int", "3vv")) + "newsidler-1544_2-nun_volget.tbp"
 		);
-		midiTestpiece = new File(PathTools.getPathString(
+		midiTestpiece = new File(CLInterface.getPathString(
 			Arrays.asList(mp, td)) + "testpiece.mid"
 		);
-		midiNewsidler = new File(PathTools.getPathString(
+		midiNewsidler = new File(CLInterface.getPathString(
 			Arrays.asList(mp, "thesis-int", "3vv")) + "newsidler-1544_2-nun_volget.mid"	
 		);
 	}

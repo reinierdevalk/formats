@@ -47,13 +47,13 @@ import org.apache.commons.io.FilenameUtils;
 
 import conversion.exports.MEIExport;
 import external.Tablature;
+import interfaces.CLInterface;
 import conversion.imports.TabImport;
 import internal.core.Encoding;
 import internal.core.Encoding.Stage;
 import tbp.symbols.Symbol;
 import tbp.symbols.TabSymbol.TabSymbolSet;
 import tools.ToolBox;
-import tools.path.PathTools;
 
 /**
  * @author Reinier de Valk
@@ -117,7 +117,7 @@ public class Editor extends JFrame{
 	// try-catch block is only needed when reading from a File using a BufferedReader
 	public static void main(String[] args) {
 		boolean dev = args.length == 0 ? true : args[0].equals(String.valueOf(true));
-		Map<String, String> argPaths = PathTools.getPaths(dev);
+		Map<String, String> argPaths = CLInterface.getPaths(dev);
 		new Editor(argPaths);
 	}
 
@@ -142,7 +142,7 @@ public class Editor extends JFrame{
 		setTabTextArea();
 		setTabStyleButtonGroup();
 		setRhythmFlagsCheckBox();
-		setFileChooser(new File(PathTools.getPathString(Arrays.asList(argPaths.get("CONVERTER_PATH")))));
+		setFileChooser(new File(CLInterface.getPathString(Arrays.asList(argPaths.get("CONVERTER_PATH")))));
 //		setFileChooser(new File("F:/research/computation/tool_data/converter/"));
 //		setFileChooser(new File("F:/research/data/user/in/"));
 		setPaths(argPaths);
@@ -674,9 +674,10 @@ public class Editor extends JFrame{
 						content = makeASCIITab(e);
 					}
 					else if (exportType.equals(MEI)) {
+						Map<String, String> cliOptsVals = null; // olja 10.12
 						content = MEIExport.exportMEIFile(
 							null, new Tablature(e, false), null, false, false, getPaths(),
-							new String[]{null, "abtab -- converter"}
+							cliOptsVals, new String[]{null, "abtab -- converter"}
 						);
 					}
 				}

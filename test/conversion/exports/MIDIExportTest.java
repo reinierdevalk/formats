@@ -13,7 +13,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import external.Transcription;
-import tools.path.PathTools;
+import interfaces.CLInterface;
 
 public class MIDIExportTest {
 
@@ -24,10 +24,10 @@ public class MIDIExportTest {
 	public void setUp() throws Exception {
 //		Runner.setPathsToCodeAndData(UI.getRootDir(), false);
 //		midiTestGetMeterInfoDiminuted = new File(Runner.midiPathTest + "test_get_meter_key_info_diminuted.mid");
-		Map<String, String> paths = PathTools.getPaths(true);
+		Map<String, String> paths = CLInterface.getPaths(true);
 		String mp = paths.get("MIDI_PATH");
-		String td = "test";
-		midiTestGetMeterInfo = new File(PathTools.getPathString(
+		String td = "test/5vv/";
+		midiTestGetMeterInfo = new File(CLInterface.getPathString(
 			Arrays.asList(mp, td)) + "test_get_meter_key_info.mid"
 		);
 //		midiTestGetMeterInfoDiminuted = new File(MEIExport.rootDir + "data/annotated/MIDI/test/" + "test_get_meter_key_info_diminuted.mid");

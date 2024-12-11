@@ -19,6 +19,7 @@ import de.uos.fmt.musitech.utility.math.Rational;
 import external.Tablature;
 import external.Transcription;
 import external.Tablature.Tuning;
+import interfaces.CLInterface;
 import interfaces.PythonInterface;
 import internal.core.Encoding;
 import internal.core.ScorePiece;
@@ -34,7 +35,6 @@ import tools.ToolBox;
 import tools.labels.LabelTools;
 import tools.music.PitchKeyTools;
 import tools.music.TimeMeterTools;
-import tools.path.PathTools;
 import tools.text.StringTools;
 
 public class MEIExport {
@@ -51,7 +51,7 @@ public class MEIExport {
 	
 	public static final List<String> MEI_HEAD = Arrays.asList("title");
 	public static final List<String> STRINGS = Arrays.asList(
-		"pname", "oct", "accid", "tie", "dur", "dots", "xml:id"
+		"pname", "oct", "accid", "accid.ges", "tie", "dur", "dots", "xml:id"
 	);	
 	public static final List<String> INTS = Arrays.asList(
 		"ind", "indTab", "bar", 
@@ -64,12 +64,16 @@ public class MEIExport {
 	private static boolean ONLY_TAB, ONLY_TRANS, TAB_AND_TRANS;
 	private static boolean TAB_ON_TOP, GRAND_STAFF;
 	private static boolean verbose = false;
+	private static boolean addAccidGes = true;
 
 //	private static String templatesPath;
 //	private static String pythonPath;
 
-
 	public static void main(String[] args) {
+		
+	}
+
+	public static void main2(String[] args) {
 		String testTabFile = "4471_40_cum_sancto_spiritu";
 //		testTabFile = "5263_12_in_exitu_israel_de_egipto_desprez-3";
 //		testTabFile = "4465_33-34_memor_esto-2";
@@ -168,7 +172,7 @@ public class MEIExport {
 		Map<String, String> paths = null;
 		exportMEIFile(trans, tab, /*tab.getBasicTabSymbolProperties(), trans.getKeyInfo(), 
 			tab.getTripletOnsetPairs(),*/ mismatchInds, grandStaff, tabOnTop, paths, 
-			/*alignWithMetricBarring,*/ new String[]{s, ""});
+			/*alignWithMetricBarring,*/ null, new String[]{s, ""});
 //		System.out.println(ToolBox.readTextFile(new File(s)));
 
 //		String scoreType = grandStaff ? "grand_staff" : "score";
@@ -226,27 +230,45 @@ public class MEIExport {
 	 * @param dict
 	 */
 	public static String exportMEIFile(Transcription trans, Tablature tab, List<List<Integer>> mismatchInds, 
-		boolean score, boolean tabOnTop, Map<String, String> paths, String[] dict) {
+		boolean score, boolean tabOnTop, Map<String, String> paths, Map<String, String> transParams, 
+		String[] dict) {
 //l		System.out.println("\r\n>>> MEIExport.exportMEIFile() called");
 
 		String INDENT_SCORE = TAB.repeat(4); // for the <score>
 		String INDENT_ONE = INDENT_SCORE + TAB; // for the main <scoreDef> and all <section>s
 		String INDENT_TWO = INDENT_SCORE + TAB.repeat(2); // for the first child of each <section>
 
-		String tp = PathTools.getPathString(Arrays.asList(paths.get("TEMPLATES_PATH")));
+		String tp = CLInterface.getPathString(Arrays.asList(paths.get("TEMPLATES_PATH")));
 		String mei = ToolBox.readTextFile(new File(tp + paths.get("MEI_TEMPLATE")));
 //		String mei = ToolBox.readTextFile(new File(getTemplatesPath() + "template-MEI.xml"));
 //		String mei = ToolBox.readTextFile(new File(tp + "template-MEI.xml"));
 		String path = dict[0];
 
+		List<String[]> mss = null;
+		if (tab != null) {
+			mss = tab.getMensurationSigns();
+		}
+		boolean includeTab = transParams.get(CLInterface.TABLATURE).equals("y");
+//		if (transParams.get(CLInterface.TABLATURE).equals("n")) {
+//			tab = null;
+//		}
+//		mss.forEach(ms -> System.out.println(Arrays.asList(ms)));
+//		System.exit(0);
+		
+
 		ONLY_TAB = tab != null && trans == null;
 		TAB_AND_TRANS = tab != null && trans != null;
-		ONLY_TRANS = tab == null && trans != null;
+		ONLY_TRANS = 
+			(tab == null && trans != null) // there is no tab
+			||
+			((tab != null && !includeTab) && trans != null); // there is a tab but it is not included
 		TAB_ON_TOP = tabOnTop;
 		GRAND_STAFF = !score;
 
 		List<Integer[]> mi = 
 			ONLY_TAB || TAB_AND_TRANS ? tab.getMeterInfoAgnostic() : trans.getMeterInfo();
+		mi.forEach(z -> System.out.println(Arrays.asList(z)));
+
 		List<Integer[]> ki = null;
 		int numVoices = -1;
 		if (TAB_AND_TRANS || ONLY_TRANS) {
@@ -284,7 +306,7 @@ public class MEIExport {
 		int numBars = mi.get(mi.size()-1)[Transcription.MI_LAST_BAR];
 		List<Integer> sectionBars = ToolBox.getItemsAtIndex(mi, Transcription.MI_FIRST_BAR);
 		// a. Get all <scoreDef>s
-		List<List<String>> scoreDefs = makeScoreDefs(tab, mi, ki, sectionBars, numVoices);
+		List<List<String>> scoreDefs = makeScoreDefs(tab, mi, ki, transParams, sectionBars, numVoices);
 		// b. Get all tab bars
 		List<List<String>> tabBars = null;
 		if (ONLY_TAB || TAB_AND_TRANS) {
@@ -331,13 +353,13 @@ public class MEIExport {
 					}
 				) + "\r\n");
 
-				if (ONLY_TAB || (TAB_AND_TRANS && TAB_ON_TOP)) { // zondig was tabOnTop
+				if (ONLY_TAB || (TAB_AND_TRANS && TAB_ON_TOP)) {
 					tabBars.get(b-1).forEach(s -> scorePlaceholder.append(INDENT_TWO + TAB + s + "\r\n"));
 					if (!ONLY_TAB) {
 						transBars.get(b-1).forEach(s -> scorePlaceholder.append(INDENT_TWO + TAB + s + "\r\n"));
 					}
 				}
-				if ((TAB_AND_TRANS && !TAB_ON_TOP) || ONLY_TRANS) { // zondig was tabOnTop
+				if ((TAB_AND_TRANS && !TAB_ON_TOP) || ONLY_TRANS) {
 					transBars.get(b-1).forEach(s -> scorePlaceholder.append(INDENT_TWO + TAB + s + "\r\n"));
 					if (!ONLY_TRANS) {
 						tabBars.get(b-1).forEach(s -> scorePlaceholder.append(INDENT_TWO + TAB + s + "\r\n"));
@@ -353,7 +375,7 @@ public class MEIExport {
 		// 3. Save
 		if (path != null) { 
 			ToolBox.storeTextFile(
-				mei, new File(path + "-" + (GRAND_STAFF ? "grand_staff" : "score") + MEI_EXT) // zondig was grandStaff
+				mei, new File(path + "-" + (GRAND_STAFF ? "grand_staff" : "score") + MEI_EXT)
 			);
 			return null;
 		}
@@ -364,7 +386,7 @@ public class MEIExport {
 
 
 	private static List<List<String>> makeScoreDefs(Tablature tab, List<Integer[]> mi, 
-		List<Integer[]> ki, List<Integer> sectionBars, int numVoices) {
+		List<Integer[]> ki, Map<String, String> transParams, List<Integer> sectionBars, int numVoices) {
 //l		System.out.println("\r\n>>> makeScoreDefs() called");
 
 		// The <scoreDef> contains a <staffGrp>, which contains one (TAB_ONLY case) or more 
@@ -405,7 +427,12 @@ public class MEIExport {
 		List<String[]> tabMensSigns = null;
 		Integer[] slsTab = null;
 		if (ONLY_TAB || TAB_AND_TRANS) {
-			tss = tab.getEncoding().getTabSymbolSet();
+//			tss = tab.getEncoding().getTabSymbolSet();
+			String tabType = transParams.get(CLInterface.TYPE);
+			tss = Arrays.stream(TabSymbolSet.values())
+				.filter(t -> t.getShortType().equals(tabType))
+				.findFirst()
+				.orElse(null);
 			tuning = tab.getTunings()[0];
 			// NB: tabMensSigns aligns with mi, i.e., each of its elements corresponds to
 			// an element with the same bar and metric time in mi (but not vice versa)
@@ -435,11 +462,19 @@ public class MEIExport {
 			List<String> currScoreDef = new ArrayList<>();
 
 			int indInTabMs = 
-				ONLY_TRANS ? - 1 : 
+				(ONLY_TRANS && tab == null) ? -1 :
+//				ONLY_TRANS ? - 1 : 
 				ToolBox.getItemsAtIndex(tabMensSigns, 1).indexOf(String.valueOf(bar));
 			String tabMs = 
-				ONLY_TRANS ? null : 
-				indInTabMs == -1 ? null : tabMensSigns.get(indInTabMs)[0];
+				(ONLY_TRANS && tab == null) ? null :
+//				ONLY_TRANS ? null : 
+				(indInTabMs == -1 ? null : tabMensSigns.get(indInTabMs)[0]);
+			
+			System.out.println("GOREJU");
+			System.out.println(ToolBox.getItemsAtIndex(tabMensSigns, 1).indexOf(String.valueOf(bar)));
+			System.out.println("ind:   " + indInTabMs);
+			System.out.println("bar:   " + bar);
+			System.out.println("tabMS: " + tabMs);
 
 			Integer[] currMi = mi.get(
 				ToolBox.getItemsAtIndex(mi, Transcription.MI_FIRST_BAR).indexOf(bar)
@@ -1324,10 +1359,18 @@ public class MEIExport {
 			// a. Set pname, accid, oct
 			String pname = pa[0];
 			String accid = pa[1];
+			String accidGes = pa[2];
 			String oct = String.valueOf(PitchKeyTools.getOctave(pitch));
 			curr[STRINGS.indexOf("pname")] = pname; 
 			if (!accid.equals("")) {
 				curr[STRINGS.indexOf("accid")] = accid;
+			}
+			if (addAccidGes) {
+				if (!accidGes.equals("")) {
+					// accid.ges overrules accid
+					curr[STRINGS.indexOf("accid")] = null;
+					curr[STRINGS.indexOf("accid.ges")] = accidGes;
+				}
 			}
 			curr[STRINGS.indexOf("oct")] = oct;
 			if (verbose) {
@@ -2031,7 +2074,7 @@ public class MEIExport {
 					) : 
 					makeRestXMLID(v, currBar, seq, mp);
 
-			seq++;				
+			seq++;
 		}
 	}
 
@@ -2074,7 +2117,7 @@ public class MEIExport {
 		}
 		// Store unbeamed as text file // TODO find cleaner solution
 		// NB: the stored file ends with a line break
-		String psp = PathTools.getPathString(Arrays.asList(paths.get("UTILS_PYTHON_PATH")));
+		String psp = CLInterface.getPathString(Arrays.asList(paths.get("UTILS_PYTHON_PATH")));
 //		String psp = getPythonPath();
 		String fName = psp + "unbeamed.txt";
 		File f = new File(fName);
@@ -2336,7 +2379,7 @@ public class MEIExport {
 				if (verbose) System.out.println("voice = " + j);
 				int staff = sls.get(j)[0];
 				int layer = sls.get(j)[1];
-				
+
 				// Add opening <staff> and <layer>
 				// Grand staff case: only add if j is first voice (upper staff) or if  
 				// previous voice has staff-1 (lower staff) 
@@ -2415,7 +2458,7 @@ public class MEIExport {
 	 * @param ki
 	 * @return The aligned meterInfo and KeyInfo, with one value added to each element, 
 	 *         indicating whether (1) or not (0) at the metric time for that element a 
-	 *         meter change (meterInfo case) of key change (keyInfo case) occurs. If not,
+	 *         meter change (meterInfo case) or key change (keyInfo case) occurs. If not,
 	 *         the appropriate values from the previous element are copied (i.e., all 
 	 *         values but those relating to bar and metric time).
 	 */
@@ -2472,7 +2515,9 @@ public class MEIExport {
 				Integer[] kiInPrev = kiAligned.get(i-1);
 				// Remove diminution and extend with key change
 				List<Integer> kiInAsList = new ArrayList<Integer>(Arrays.asList(kiIn));
-				kiInAsList.remove(Tablature.MI_DIM);
+				if (ONLY_TAB || TAB_AND_TRANS) {
+					kiInAsList.remove(Tablature.MI_DIM); // olja 10.12
+				}
 				kiInAsList.add(0);
 				kiIn = kiInAsList.toArray(new Integer[0]);
 				// Adapt key to values in kiInPrev

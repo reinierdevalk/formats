@@ -84,6 +84,10 @@ public class TabImport {
 
 
 	public static void main(String[] args) {
+		
+	}
+	
+	public static void main2(String[] args) {
 		if (args.length == 0) {
 			// To convert an ASCII tab or TabCode file into a tab+ file		
 			List<String> pieces = Arrays.asList(new String[]{
@@ -361,6 +365,7 @@ public class TabImport {
 		Map<String, String> mensurationSigns = new LinkedHashMap<String, String>();
 		mensurationSigns.put("2:4", Symbol.TWO.getEncoding());
 		mensurationSigns.put("3:4", Symbol.THREE.getEncoding());
+		mensurationSigns.put("3", Symbol.THREE.getEncoding()); // olja 10.12
 		mensurationSigns.put("5:4", Symbol.FIVE.getEncoding());
 		mensurationSigns.put("6:4", Symbol.SIX.getEncoding());
 		mensurationSigns.put("7:4", Symbol.SEVEN.getEncoding());

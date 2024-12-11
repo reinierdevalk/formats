@@ -13,8 +13,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 import conversion.imports.TabImport;
+import interfaces.CLInterface;
 import internal.core.Encoding;
-import tools.path.PathTools;
 
 public class TabImportTest {
 
@@ -28,11 +28,11 @@ public class TabImportTest {
 
 	@Test
 	public void testCreateMeterInfoString() {
-		Map<String, String> paths = PathTools.getPaths(true);
+		Map<String, String> paths = CLInterface.getPaths(true);
 		String ep = paths.get("ENCODINGS_PATH");
 		
 		List<String> testPieces = Arrays.asList(new String[]{
-			"test/testpiece.tbp",
+			"test/5vv/testpiece.tbp",
 			//
 			"thesis-int/3vv/judenkuenig-1523_2-elslein_liebes.tbp",
 			"thesis-int/3vv/newsidler-1536_7-disant_adiu.tbp",
