@@ -46,8 +46,8 @@ public class MEIExport {
 
 	public static final String TAB = "    ";
 
-	public static final String MEI_EXT = ".xml";
-	public static final String MEI_EXT_ALT = ".mei";
+	public static final String MEI_EXT = ".mei";
+	public static final String MEI_EXT_ALT = ".xml";
 	
 	public static final List<String> MEI_HEAD = Arrays.asList("title");
 	public static final List<String> STRINGS = Arrays.asList(
@@ -65,6 +65,9 @@ public class MEIExport {
 	private static boolean TAB_ON_TOP, GRAND_STAFF;
 	private static boolean verbose = false;
 	private static boolean addAccidGes = true;
+	
+	private static List<String> xmlIDs;
+	private static final int LEN_ID = 8;
 
 //	private static String templatesPath;
 //	private static String pythonPath;
@@ -244,17 +247,7 @@ public class MEIExport {
 //		String mei = ToolBox.readTextFile(new File(tp + "template-MEI.xml"));
 		String path = dict[0];
 
-		List<String[]> mss = null;
-		if (tab != null) {
-			mss = tab.getMensurationSigns();
-		}
 		boolean includeTab = transParams.get(CLInterface.TABLATURE).equals("y");
-//		if (transParams.get(CLInterface.TABLATURE).equals("n")) {
-//			tab = null;
-//		}
-//		mss.forEach(ms -> System.out.println(Arrays.asList(ms)));
-//		System.exit(0);
-		
 
 		ONLY_TAB = tab != null && trans == null;
 		TAB_AND_TRANS = tab != null && trans != null;
@@ -267,7 +260,6 @@ public class MEIExport {
 
 		List<Integer[]> mi = 
 			ONLY_TAB || TAB_AND_TRANS ? tab.getMeterInfoAgnostic() : trans.getMeterInfo();
-		mi.forEach(z -> System.out.println(Arrays.asList(z)));
 
 		List<Integer[]> ki = null;
 		int numVoices = -1;
@@ -303,6 +295,7 @@ public class MEIExport {
 		// 2. Make the <music> and replace in template. The <music> consists of the <score>, 
 		// containing one or more <section>s. Each <section> consists of a <scoreDef> followed 
 		// by a set of <measure>s (containing tab bars, tab and trans bars, or only trans bars)
+		xmlIDs = new ArrayList<>();
 		int numBars = mi.get(mi.size()-1)[Transcription.MI_LAST_BAR];
 		List<Integer> sectionBars = ToolBox.getItemsAtIndex(mi, Transcription.MI_FIRST_BAR);
 		// a. Get all <scoreDef>s
@@ -334,7 +327,10 @@ public class MEIExport {
 
 			// Add <section>  
 			scorePlaceholder.append(INDENT_ONE + makeOpeningTag("section", false, 
-				new String[][]{{"n", String.valueOf((i+1))}}
+				new String[][]{
+					{"xml:id", addUniqueID("s", xmlIDs).get(xmlIDs.size() - 1)},	
+					{"n", String.valueOf((i+1))}
+				}
 			) + "\r\n");
 
 			// Add <scoreDef>
@@ -348,8 +344,10 @@ public class MEIExport {
 			for (int b = currFirstBar; b <= currLastBar; b++) {
 				scorePlaceholder.append(INDENT_TWO + makeOpeningTag("measure", false, 
 					new String[][]{
+						{"xml:id", addUniqueID("m", xmlIDs).get(xmlIDs.size() - 1)},
 						{"n", String.valueOf(b)},
 						(b == numBars ? new String[]{"right", "end"} : null)
+
 					}
 				) + "\r\n");
 
@@ -469,12 +467,6 @@ public class MEIExport {
 				(ONLY_TRANS && tab == null) ? null :
 //				ONLY_TRANS ? null : 
 				(indInTabMs == -1 ? null : tabMensSigns.get(indInTabMs)[0]);
-			
-			System.out.println("GOREJU");
-			System.out.println(ToolBox.getItemsAtIndex(tabMensSigns, 1).indexOf(String.valueOf(bar)));
-			System.out.println("ind:   " + indInTabMs);
-			System.out.println("bar:   " + bar);
-			System.out.println("tabMS: " + tabMs);
 
 			Integer[] currMi = mi.get(
 				ToolBox.getItemsAtIndex(mi, Transcription.MI_FIRST_BAR).indexOf(bar)
@@ -532,11 +524,11 @@ public class MEIExport {
 
 				staffDefTab.add(makeOpeningTag("staffDef", false,
 					new String[][]{
+						{"xml:id", addUniqueID("sd", xmlIDs).get(xmlIDs.size() - 1)},
 						{"n", String.valueOf(slsTab[0])},
 						{"lines", "6"},
 						{"notationtype", notationtypeStr},
-						{"tab.dur.sym.ratio", "1"}, // TODO remove?
-						{"xml:id", "s1"}
+						{"tab.dur.sym.ratio", "1"} // TODO remove?
 					}
 				));
 				// Add tuning
@@ -545,6 +537,7 @@ public class MEIExport {
 					if (isSimpleTuning) {
 						staffDefTab.add(TAB + makeOpeningTag("tuning", true,
 							new String[][]{
+								{"xml:id", addUniqueID("t", xmlIDs).get(xmlIDs.size() - 1)},
 								{"tuning.standard", String.join(
 									".", "lute", tuning.getEra().toLowerCase(), 
 									String.valueOf(tuning.getCourses().size()))}
@@ -552,7 +545,11 @@ public class MEIExport {
 						));
 					}
 					else {
-						staffDefTab.add(TAB + makeOpeningTag("tuning", false, null));
+						staffDefTab.add(TAB + makeOpeningTag("tuning", false, 
+							new String[][]{
+								{"xml:id", addUniqueID("t", xmlIDs).get(xmlIDs.size() - 1)}
+							}
+						));
 						List<String> courses = new ArrayList<String>(tuning.getCourses());
 						Collections.reverse(courses);
 						List<Integer> intervals = new ArrayList<Integer>(tuning.getIntervals());
@@ -561,6 +558,7 @@ public class MEIExport {
 						for (int i = 0; i < courses.size(); i++) {
 							staffDefTab.add(TAB + TAB + makeOpeningTag("course", true, 
 								new String[][]{
+									{"xml:id", addUniqueID("c", xmlIDs).get(xmlIDs.size() - 1)},
 									{"n", String.valueOf((i+1))},
 									{"pname", courses.get(i).toLowerCase()},
 									{"oct", String.valueOf(PitchKeyTools.getOctave(pitch))}
@@ -583,6 +581,7 @@ public class MEIExport {
 					}
 					staffDefTab.add(TAB + makeOpeningTag("meterSig", true,
 						new String[][]{
+							{"xml:id", addUniqueID("ms", xmlIDs).get(xmlIDs.size() - 1)},
 							{"count", String.valueOf(count)},
 							{"unit", String.valueOf(unit)},
 							(count != 3 ? new String[]{"sym", sym} : new String[]{"form", "num"})
@@ -599,6 +598,7 @@ public class MEIExport {
 				int firstStaff = slsTrans.get(0)[0];
 				staffGrpTrans.add(makeOpeningTag("staffGrp", false,
 					new String[][]{
+						{"xml:id", addUniqueID("sg", xmlIDs).get(xmlIDs.size() - 1)},
 						{"symbol", "bracket"},
 						{"bar.thru", "true"}
 					}
@@ -607,6 +607,7 @@ public class MEIExport {
 				for (int i = 0; i < numStaffs; i++) {
 					staffGrpTrans.add(TAB + makeOpeningTag("staffDef", false,
 						new String[][]{
+							{"xml:id", addUniqueID("sd", xmlIDs).get(xmlIDs.size() - 1)},
 							{"n", String.valueOf(firstStaff + i)},
 							{"lines", "5"}
 						} 
@@ -616,6 +617,7 @@ public class MEIExport {
 						String[] clef = clefs.get(i);
 						staffGrpTrans.add(TAB + TAB + makeOpeningTag("clef", true,
 							new String[][]{
+								{"xml:id", addUniqueID("c", xmlIDs).get(xmlIDs.size() - 1)},
 								{"shape", clef[0]},
 								{"line", clef[1]}
 							} 
@@ -626,6 +628,7 @@ public class MEIExport {
 						int ks = currKi[Transcription.KI_KEY];
 						staffGrpTrans.add(TAB + TAB + makeOpeningTag("keySig", true,
 							new String[][]{
+								{"xml:id", addUniqueID("ks", xmlIDs).get(xmlIDs.size() - 1)},
 								{"sig", String.valueOf(Math.abs(ks)) + (ks == 0 ? "" : ((ks < 0) ? "f" : "s"))},
 								{"mode", currKi[Transcription.KI_MODE] == 0 ? "major" : "minor"}
 							}
@@ -635,6 +638,7 @@ public class MEIExport {
 					if (includeMeter) {
 						staffGrpTrans.add(TAB + TAB + makeOpeningTag("meterSig", true,
 							new String[][]{
+								{"xml:id", addUniqueID("ms", xmlIDs).get(xmlIDs.size() - 1)},
 								{"count", String.valueOf(count)},
 								{"unit", String.valueOf(unit)},
 								(count != 3 ? new String[]{"sym", sym} : 
@@ -648,13 +652,21 @@ public class MEIExport {
 			}
 
 			// 3. Construct scoreDef (see schema above)
-			currScoreDef.add(makeOpeningTag("scoreDef", false, null));
+			currScoreDef.add(makeOpeningTag("scoreDef", false, 
+				new String[][]{
+					{"xml:id", addUniqueID("sd", xmlIDs).get(xmlIDs.size() - 1)}
+				}
+			));
 			List<String> tabPart = new ArrayList<>();
 			staffDefTab.forEach(s -> tabPart.add(TAB.repeat(2) + s));
 			List<String> transPart = new ArrayList<>();
 			staffGrpTrans.forEach(s -> transPart.add((ONLY_TRANS ? TAB : TAB.repeat(2)) + s));
 			if (ONLY_TAB) {
-				currScoreDef.add(TAB + makeOpeningTag("staffGrp", false, null));
+				currScoreDef.add(TAB + makeOpeningTag("staffGrp", false, 
+					new String[][]{
+						{"xml:id", addUniqueID("sg", xmlIDs).get(xmlIDs.size() - 1)}
+					}
+				));
 				currScoreDef.addAll(tabPart);
 				currScoreDef.add(TAB + makeClosingTag("staffGrp"));
 			}
@@ -662,7 +674,11 @@ public class MEIExport {
 				currScoreDef.addAll(transPart);
 			}
 			else {
-				currScoreDef.add(TAB + makeOpeningTag("staffGrp", false, null));
+				currScoreDef.add(TAB + makeOpeningTag("staffGrp", false, 
+					new String[][]{
+						{"xml:id", addUniqueID("sg", xmlIDs).get(xmlIDs.size() - 1)}
+					}
+				));
 				if (TAB_ON_TOP) {
 					currScoreDef.addAll(tabPart);
 					currScoreDef.addAll(transPart);
@@ -717,10 +733,16 @@ public class MEIExport {
 
 			// Add opening <staff> and <layer>
 			currBarAsXML.add(makeOpeningTag("staff", false, 
-				new String[][]{{"n", String.valueOf(staff)}})
-			);
+				new String[][]{
+					{"xml:id", addUniqueID("s", xmlIDs).get(xmlIDs.size() - 1)},
+					{"n", String.valueOf(staff)}
+				}
+			));
 			currBarAsXML.add(TAB + makeOpeningTag("layer", false, 
-				new String[][]{{"n", String.valueOf(layer)}}
+				new String[][]{
+					{"xml:id", addUniqueID("l", xmlIDs).get(xmlIDs.size() - 1)},
+					{"n", String.valueOf(layer)}
+				}
 			));
 
 			// Add tab bar <note>s
@@ -811,7 +833,11 @@ public class MEIExport {
 			boolean beamActiveDefOrCorrOrSic = beamActive;
 			Integer[] prevDurXMLDefOrCorrOrSic = prevDurXML;
 			if (eventIsCorrected) {
-				currEventAsXML.add(TAB.repeat(2) + makeOpeningTag("choice", false, null));
+				currEventAsXML.add(TAB.repeat(2) + makeOpeningTag("choice", false, 
+					new String[][]{
+						{"xml:id", addUniqueID("c", xmlIDs).get(xmlIDs.size() - 1)}
+					}
+				));
 			}
 			for (int j = 0; j < allLists.size(); j++) {
 				// currList is
@@ -821,8 +847,17 @@ public class MEIExport {
 				List<String> currList = allLists.get(j);
 				if (eventIsCorrected) {
 					currEventAsXML.add(TAB.repeat(3) + 
-						(j == 0 ? makeOpeningTag("corr", false, null) : 
-						makeOpeningTag("sic", false, null)));
+						(j == 0 ? makeOpeningTag("corr", false, 
+							new String[][]{
+								{"xml:id", addUniqueID("c", xmlIDs).get(xmlIDs.size() - 1)}
+							}	
+						) : 
+						makeOpeningTag("sic", false, 
+							new String[][]{
+								{"xml:id", addUniqueID("s", xmlIDs).get(xmlIDs.size() - 1)}
+							}	
+						))
+					);
 				}
 
 				for (int k = 0 ; k < currList.size(); k++) {
@@ -852,8 +887,11 @@ public class MEIExport {
 
 					if (openBeam) {
 						currEventAsXML.add(
-							TAB.repeat(!eventIsCorrected ? 2 : 4) + makeOpeningTag("beam", false, null)
-						);
+							TAB.repeat(!eventIsCorrected ? 2 : 4) + makeOpeningTag("beam", false, 
+								new String[][]{
+									{"xml:id", addUniqueID("b", xmlIDs).get(xmlIDs.size() - 1)}
+							}	
+						));
 					}
 					currEventAsXML.addAll(
 						getTabGrps(Arrays.asList(new String[]{defOrCorrOrSic}), 
@@ -984,28 +1022,25 @@ public class MEIExport {
 
 				// Make tabGrp
 				// 1. <tabGrp>
-				String tabGrpID = "";
 				tabGrpList.add(TAB.repeat(2 + addedTabs) + makeOpeningTag("tabGrp", false, 
 					new String[][]{
-						{"xml:id", tabGrpID},
+						{"xml:id", addUniqueID("tg", xmlIDs).get(xmlIDs.size() - 1)},
 						{"dur", String.valueOf(dur)},
 						(dots > 0 ? new String[]{"dots", String.valueOf(dots)} : null)
 					}
 				));
 				// 2. <tabDurSym> (also covers rests)
 				if (currXMLDur != null) {
-					String tabDurSymID = "";
 					tabGrpList.add(TAB.repeat(3 + addedTabs) + makeOpeningTag("tabDurSym", true, 
-						new String[][]{{"xml:id", tabDurSymID}}
+						new String[][]{{"xml:id", addUniqueID("tds", xmlIDs).get(xmlIDs.size() - 1)}}
 					));
 				}
 				// 3. <note>s (rests are covered by the tabDurSym)
 				for (int j = ((currXMLDur != null) ? 1 : 0); j < currEventSplit.length; j++) {
 					TabSymbol ts = Symbol.getTabSymbol(currEventSplit[j], tss);
-					String noteID = "";
 					tabGrpList.add(TAB.repeat(3 + addedTabs) + makeOpeningTag("note", true, 
 						new String[][]{
-							{"xml:id", noteID},
+							{"xml:id", addUniqueID("n", xmlIDs).get(xmlIDs.size() - 1)},
 							{"tab.course", String.valueOf(ts.getCourse())},
 							{"tab.fret", String.valueOf(ts.getFret())},
 						}
@@ -1017,6 +1052,19 @@ public class MEIExport {
 
 		return tabGrpList;
 	}
+
+
+	private static List<String> addUniqueID(String prefix, List<String> argXmlIDs) {
+		String xmlID;
+
+		// Generate ID; repeat until it's not in the list; then add to list
+		do {
+			xmlID = prefix + StringTools.randomID(LEN_ID - prefix.length());
+		} while (argXmlIDs.contains(xmlID));
+		argXmlIDs.add(xmlID); // Add to the list once it's unique
+
+		return argXmlIDs;
+    }
 
 
 	/**
@@ -2202,7 +2250,7 @@ public class MEIExport {
 
 		String barRestStr = TAB.repeat(2) + makeOpeningTag("mRest", true, 
 			new String[][]{
-				{"xml:id", makeRestXMLID(voice, ints.get(0)[INTS.indexOf("bar")], 0, Rational.ZERO)}
+				{"xml:id", addUniqueID("mr", xmlIDs).get(xmlIDs.size() - 1)}
 			}
 		);
 
@@ -2242,13 +2290,20 @@ public class MEIExport {
 
 					// Check for any <beam> to be added before <note>
 					if (currIn[INTS.indexOf("beamOpen")] == 1) {
-						barList.add(TAB.repeat(2) + makeOpeningTag("beam", false, null)); 
+						barList.add(TAB.repeat(2) + makeOpeningTag("beam", false, 
+							new String[][]{
+								{"xml:id", addUniqueID("b", xmlIDs).get(xmlIDs.size() - 1)},
+							}
+						)); 
 						indentsAdded++;
 					}
 					// Check for any <chord> to be added before <note>
 					if ((i < strs.size()-1) && (currOnset.equals(nextOnset) && !chordActive)) {
 						barList.add(TAB.repeat(2 + indentsAdded) + makeOpeningTag("chord", false, 
-							new String[][]{{"dur", String.valueOf(currDur)}}
+							new String[][]{
+								{"xml:id", addUniqueID("c", xmlIDs).get(xmlIDs.size() - 1)},	
+								{"dur", String.valueOf(currDur)}
+							}
 						));
 						chordActive = true;
 						indentsAdded++;
@@ -2271,6 +2326,7 @@ public class MEIExport {
 						}
 						barList.add(TAB.repeat(2 + indentsAdded) + makeOpeningTag("tuplet", false, 	
 							new String[][]{
+								{"xml:id", addUniqueID("t", xmlIDs).get(xmlIDs.size() - 1)},	
 								{"dur", String.valueOf(tupletDur)},
 								{"num", "3"},
 								{"numbase", "2"},
@@ -2282,15 +2338,17 @@ public class MEIExport {
 					if (currStr[STRINGS.indexOf("pname")] == null) {
 						noteStr = TAB.repeat(2 + indentsAdded) + makeOpeningTag("rest", true, 
 							new String[][]{
+								{"xml:id", addUniqueID("r", xmlIDs).get(xmlIDs.size() - 1)},
 								{"dur", String.valueOf(currDur)},
 								currDots != 0 ? new String[]{"dots", String.valueOf(currDots)} : null,
-								{"xml:id", currStr[STRINGS.indexOf("xml:id")]},
+//								{"xml:id", currStr[STRINGS.indexOf("xml:id")]},
 							}
 						);
 					}
 					// Make note
 					else {
 						List<String[]> attsList = new ArrayList<>();
+						attsList.add(new String[]{"xml:id", addUniqueID("n", xmlIDs).get(xmlIDs.size() - 1)});
 						for (int j = 0; j < currStr.length; j++) {
 							String s = currStr[j];
 							if (s != null) {
@@ -2385,11 +2443,17 @@ public class MEIExport {
 				// previous voice has staff-1 (lower staff) 
 				if (!GRAND_STAFF || (GRAND_STAFF && (j == 0 || (j > 0 && sls.get(j-1)[0] == staff-1)))) {
 					currBarAsXML.add(makeOpeningTag("staff", false, 
-						new String[][]{{"n", String.valueOf(staff)}}
+						new String[][]{
+							{"xml:id", addUniqueID("s", xmlIDs).get(xmlIDs.size() - 1)},
+							{"n", String.valueOf(staff)}
+						}
 					));
 				}
 				currBarAsXML.add(TAB + makeOpeningTag("layer", false, 
-					new String[][]{{"n", String.valueOf(layer)}}
+					new String[][]{
+						{"xml:id", addUniqueID("l", xmlIDs).get(xmlIDs.size() - 1)},
+						{"n", String.valueOf(layer)}
+					}
 				));
 
 				// Add bar <note>s and <rest>s
@@ -2863,7 +2927,7 @@ public class MEIExport {
 //			setTemplatePath(Path.DEPLOYMENT_DEV_PATH + Path.TEEMPLATES_DIR);
 //		}
 
-		String res = null; //ToolBox.readTextFile(new File(getTemplatesPath() + "template-MEI.xml"));
+		String res = null;
 		String path = dict[0];
 		String app = dict[1];
 

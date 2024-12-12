@@ -674,7 +674,8 @@ public class Editor extends JFrame{
 						content = makeASCIITab(e);
 					}
 					else if (exportType.equals(MEI)) {
-						Map<String, String> cliOptsVals = null; // olja 10.12
+						Map<String, String> cliOptsVals = new LinkedHashMap<String, String>(); // olja 10.12
+						cliOptsVals.put(CLInterface.TABLATURE, "y");
 						content = MEIExport.exportMEIFile(
 							null, new Tablature(e, false), null, false, false, getPaths(),
 							cliOptsVals, new String[]{null, "abtab -- converter"}
