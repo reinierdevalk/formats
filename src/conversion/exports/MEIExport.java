@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import org.apache.commons.lang3.ArrayUtils;
 
@@ -227,15 +228,20 @@ public class MEIExport {
 	 *              (i.e., one that has basicNoteProperties).
 	 * @param tab
 	 * @param mismatchInds
-	 * @param score
+	 * @param grandStaff
 	 * @param tabOnTop
 	 * @param paths
 	 * @param dict
 	 */
 	public static String exportMEIFile(Transcription trans, Tablature tab, List<List<Integer>> mismatchInds, 
-		boolean score, boolean tabOnTop, Map<String, String> paths, Map<String, String> transParams, 
+		boolean grandStaff, boolean tabOnTop, Map<String, String> paths, Map<String, String> transParams, 
 		String[] dict) {
-//l		System.out.println("\r\n>>> MEIExport.exportMEIFile() called");
+//		System.out.println("\r\n>>> MEIExport.exportMEIFile() called");
+
+		System.out.println("hier!");
+		for (Map.Entry<String, String> entry : transParams.entrySet()) {
+			System.out.println(entry.getKey() + " -- " + entry.getValue());
+		}
 
 		String INDENT_SCORE = TAB.repeat(4); // for the <score>
 		String INDENT_ONE = INDENT_SCORE + TAB; // for the main <scoreDef> and all <section>s
@@ -256,7 +262,7 @@ public class MEIExport {
 			||
 			((tab != null && !includeTab) && trans != null); // there is a tab but it is not included
 		TAB_ON_TOP = tabOnTop;
-		GRAND_STAFF = !score;
+		GRAND_STAFF = grandStaff;
 
 		List<Integer[]> mi = 
 			ONLY_TAB || TAB_AND_TRANS ? tab.getMeterInfoAgnostic() : trans.getMeterInfo();
@@ -284,6 +290,7 @@ public class MEIExport {
 		}
 
 		// 1. Make the <meiHead> and replace in template
+		// See https://music-encoding.org/guidelines/v5/content/metadata.html#headerstructure
 		String[] meiHead = new String[MEI_HEAD.size()];
 		meiHead[MEI_HEAD.indexOf("title")] = ONLY_TAB || TAB_AND_TRANS ? tab.getName() : trans.getName();
 		mei = mei.replace("title_placeholder", meiHead[MEI_HEAD.indexOf("title")]);
@@ -324,14 +331,24 @@ public class MEIExport {
 			Integer[] currMi = mi.get(
 				ToolBox.getItemsAtIndex(mi, Transcription.MI_FIRST_BAR).indexOf(sectionFirstBar)
 			);
+			Integer[] currKi = ki.get(
+				ToolBox.getItemsAtIndex(ki, Transcription.KI_FIRST_BAR).indexOf(sectionFirstBar)
+			);
 
-			// Add <section>  
-			scorePlaceholder.append(INDENT_ONE + makeOpeningTag("section", false, 
-				new String[][]{
-					{"xml:id", addUniqueID("s", xmlIDs).get(xmlIDs.size() - 1)},	
-					{"n", String.valueOf((i+1))}
-				}
-			) + "\r\n");
+			// Add <section>
+			String[][] atts = new String[][]{
+				{"xml:id", addUniqueID("s", xmlIDs).get(xmlIDs.size() - 1)},	
+				{"n", String.valueOf((i+1))}
+			};
+			if (i > 0) {
+				atts = Arrays.copyOf(atts, atts.length + 1);
+				String label = 
+					currMi[currMi.length - 1] == 1 && currKi[currKi.length - 1] == 0 ? "meter change" :
+					(currMi[currMi.length - 1] == 0 && currKi[currKi.length - 1] == 1 ? "key change" :
+					 "meter and key change");
+				atts[atts.length -1] = new String[]{"label", label};
+			}
+			scorePlaceholder.append(INDENT_ONE + makeOpeningTag("section", false, atts) + "\r\n");
 
 			// Add <scoreDef>
 			if (i > 0) {
@@ -385,7 +402,7 @@ public class MEIExport {
 
 	private static List<List<String>> makeScoreDefs(Tablature tab, List<Integer[]> mi, 
 		List<Integer[]> ki, Map<String, String> transParams, List<Integer> sectionBars, int numVoices) {
-//l		System.out.println("\r\n>>> makeScoreDefs() called");
+		System.out.println("\r\n>>> makeScoreDefs() called");
 
 		// The <scoreDef> contains a <staffGrp>, which contains one (TAB_ONLY case) or more 
 		// (other cases) <staffDef>s. In the TAB_AND_TRANS case, the <staffDef>s for 
@@ -420,12 +437,22 @@ public class MEIExport {
 		// <scoreDef>/
 		List<List<String>> scoreDefs = new ArrayList<>();
 
+		boolean useBasicMEI = true; // TODO
+		
+		for (Integer[] in : mi) {
+			System.out.println(Arrays.asList(in));
+		}
+		System.out.println("---");
+		for (Integer[] in : ki) {
+			System.out.println(Arrays.asList(in));
+		}
+//		System.exit(0);
+
 		TabSymbolSet tss = null;
 		Tuning tuning = null;
 		List<String[]> tabMensSigns = null;
 		Integer[] slsTab = null;
 		if (ONLY_TAB || TAB_AND_TRANS) {
-//			tss = tab.getEncoding().getTabSymbolSet();
 			String tabType = transParams.get(CLInterface.TYPE);
 			tss = Arrays.stream(TabSymbolSet.values())
 				.filter(t -> t.getShortType().equals(tabType))
@@ -456,9 +483,9 @@ public class MEIExport {
 				clefs.add(getCleffing(i+1, numStaffs, GRAND_STAFF));
 			}
 		}
+
 		for (int bar : sectionBars) {
 			List<String> currScoreDef = new ArrayList<>();
-
 			int indInTabMs = 
 				(ONLY_TRANS && tab == null) ? -1 :
 //				ONLY_TRANS ? - 1 : 
@@ -480,7 +507,7 @@ public class MEIExport {
 			boolean includeKey = (TAB_AND_TRANS || ONLY_TRANS) && currKi[currKi.length - 1] == 1;
 			boolean includeMeter = 
 				(ONLY_TAB || TAB_AND_TRANS) ? currMi[currMi.length - 1] == 1 && tabMs != null : 
-				currMi[currMi.length - 1] == 1;	
+				currMi[currMi.length - 1] == 1;
 
 			// Determine count, unit, and sym
 			int count = -1;
@@ -510,6 +537,12 @@ public class MEIExport {
 				else if (count == 2 && unit == 2) {
 					sym = "cut";
 				}
+			}
+			// Determine sig 
+			String sig = null;
+			if (includeKey) {
+				int ks = currKi[Transcription.KI_KEY];
+				sig = String.valueOf(Math.abs(ks)) + (ks == 0 ? "" : ((ks < 0) ? "f" : "s"));
 			}
 
 			// 1. Make staffDefTab, containing <tuning> and <meterSig> (both optional)
@@ -603,15 +636,26 @@ public class MEIExport {
 						{"bar.thru", "true"}
 					}
 				));
-				// For each <staffDef> in the <staffGrp> 
+				// For each <staffDef> in the <staffGrp>
 				for (int i = 0; i < numStaffs; i++) {
-					staffGrpTrans.add(TAB + makeOpeningTag("staffDef", false,
-						new String[][]{
-							{"xml:id", addUniqueID("sd", xmlIDs).get(xmlIDs.size() - 1)},
-							{"n", String.valueOf(firstStaff + i)},
-							{"lines", "5"}
-						} 
-					));
+					// Add staffDef
+					String[][] atts = new String[][]{
+						{"xml:id", addUniqueID("sd", xmlIDs).get(xmlIDs.size() - 1)},
+						{"n", String.valueOf(firstStaff + i)},
+						{"lines", "5"},
+					};
+					if (useBasicMEI && includeKey) {
+						String[][] keysig = new String[][]{{"keysig", sig}};
+						atts = Stream.concat(Arrays.stream(atts), Arrays.stream(keysig)).toArray(String[][]::new);
+					}
+					if (useBasicMEI && includeMeter) {
+						String[][] meter = new String[][]{
+							{"meter.count", String.valueOf(count)},
+							{"meter.unit", String.valueOf(unit)}
+						};
+						atts = Stream.concat(Arrays.stream(atts), Arrays.stream(meter)).toArray(String[][]::new);
+					}
+					staffGrpTrans.add(TAB + makeOpeningTag("staffDef", false, atts));
 					// Add clef
 					if (includeClef) {
 						String[] clef = clefs.get(i);
@@ -625,11 +669,10 @@ public class MEIExport {
 					}
 					// Add keySig
 					if (includeKey) {
-						int ks = currKi[Transcription.KI_KEY];
 						staffGrpTrans.add(TAB + TAB + makeOpeningTag("keySig", true,
 							new String[][]{
 								{"xml:id", addUniqueID("ks", xmlIDs).get(xmlIDs.size() - 1)},
-								{"sig", String.valueOf(Math.abs(ks)) + (ks == 0 ? "" : ((ks < 0) ? "f" : "s"))},
+								{"sig", sig},
 								{"mode", currKi[Transcription.KI_MODE] == 0 ? "major" : "minor"}
 							}
 						));
@@ -1057,7 +1100,7 @@ public class MEIExport {
 	private static List<String> addUniqueID(String prefix, List<String> argXmlIDs) {
 		String xmlID;
 
-		// Generate ID; repeat until it's not in the list; then add to list
+		// Generate ID; repeat until it is not in the list (f necessary); add to list
 		do {
 			xmlID = prefix + StringTools.randomID(LEN_ID - prefix.length());
 		} while (argXmlIDs.contains(xmlID));
@@ -1166,7 +1209,7 @@ public class MEIExport {
 			int bar = barMetPos[0].getNumer();
 			int voice = LabelTools.convertIntoListOfVoices(trans.getVoiceLabels().get(i)).get(0); // TODO why .get(0)? 
 
-			// currVoiceStrings and currVoiceInts start out as empty lists at i == 0,
+			// currVoiceStrs and currVoiceInts start out as empty lists at i == 0,
 			// and are populated with currStrs and currInts for the current note 
 			// (+ any preceding rests) while iterating over bnp
 			List<String[]> currVoiceStrs = voicesStrs.get(voice);
@@ -1528,12 +1571,12 @@ public class MEIExport {
 			System.out.println(pitchesNotInKey);
 		}
 
-		// Add <xml:id>s
-		for (int v = 0; v < numVoices; v++) {
-			List<String[]> currVoiceStrs = voicesStrs.get(v);
-			List<Integer[]> currVoiceInts = voicesInts.get(v);
-			updateDataListsWithXMLIDs(currVoiceInts, currVoiceStrs, v);
-		}
+//		// Add <xml:id>s
+//		for (int v = 0; v < numVoices; v++) {
+//			List<String[]> currVoiceStrs = voicesStrs.get(v);
+//			List<Integer[]> currVoiceInts = voicesInts.get(v);
+//			updateDataListsWithXMLIDs(currVoiceInts, currVoiceStrs, v);
+//		}
 
 		if (verbose) {
 			int v = 0;
@@ -2121,7 +2164,6 @@ public class MEIExport {
 						currStr[STRINGS.indexOf("oct")], mp 
 					) : 
 					makeRestXMLID(v, currBar, seq, mp);
-
 			seq++;
 		}
 	}
