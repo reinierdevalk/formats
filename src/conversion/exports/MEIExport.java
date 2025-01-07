@@ -334,6 +334,7 @@ public class MEIExport {
 			Integer[] currKi = ki.get(
 				ToolBox.getItemsAtIndex(ki, Transcription.KI_FIRST_BAR).indexOf(sectionFirstBar)
 			);
+			List<String> currScoreDef = scoreDefs.get(i);
 
 			// Add <section>
 			String[][] atts = new String[][]{
@@ -342,16 +343,24 @@ public class MEIExport {
 			};
 			if (i > 0) {
 				atts = Arrays.copyOf(atts, atts.length + 1);
-				String label = 
-					currMi[currMi.length - 1] == 1 && currKi[currKi.length - 1] == 0 ? "meter change" :
-					(currMi[currMi.length - 1] == 0 && currKi[currKi.length - 1] == 1 ? "key change" :
-					 "meter and key change");
+				String label;
+				// If there is an unspecified meter change (i.e., bar length change), currScoreDef is null
+				if (currScoreDef == null) {
+					label = "meter change (unspecified)";
+				}
+				else {
+					label = 
+						currMi[currMi.length - 1] == 1 && currKi[currKi.length - 1] == 0 ? "meter change" :
+						(currMi[currMi.length - 1] == 0 && currKi[currKi.length - 1] == 1 ? "key change" : 
+						 "meter and key change"
+						);
+				}
 				atts[atts.length -1] = new String[]{"label", label};
 			}
 			scorePlaceholder.append(INDENT_ONE + makeOpeningTag("section", false, atts) + "\r\n");
 
 			// Add <scoreDef>
-			if (i > 0) {
+			if (i > 0 && currScoreDef != null) {
 				scoreDefs.get(i).forEach(s -> scorePlaceholder.append(INDENT_TWO + s + "\r\n"));
 			}
 
@@ -402,7 +411,7 @@ public class MEIExport {
 
 	private static List<List<String>> makeScoreDefs(Tablature tab, List<Integer[]> mi, 
 		List<Integer[]> ki, Map<String, String> transParams, List<Integer> sectionBars, int numVoices) {
-		System.out.println("\r\n>>> makeScoreDefs() called");
+//		System.out.println("\r\n>>> makeScoreDefs() called");
 
 		// The <scoreDef> contains a <staffGrp>, which contains one (TAB_ONLY case) or more 
 		// (other cases) <staffDef>s. In the TAB_AND_TRANS case, the <staffDef>s for 
@@ -438,15 +447,6 @@ public class MEIExport {
 		List<List<String>> scoreDefs = new ArrayList<>();
 
 		boolean useBasicMEI = true; // TODO
-		
-		for (Integer[] in : mi) {
-			System.out.println(Arrays.asList(in));
-		}
-		System.out.println("---");
-		for (Integer[] in : ki) {
-			System.out.println(Arrays.asList(in));
-		}
-//		System.exit(0);
 
 		TabSymbolSet tss = null;
 		Tuning tuning = null;
@@ -488,11 +488,9 @@ public class MEIExport {
 			List<String> currScoreDef = new ArrayList<>();
 			int indInTabMs = 
 				(ONLY_TRANS && tab == null) ? -1 :
-//				ONLY_TRANS ? - 1 : 
 				ToolBox.getItemsAtIndex(tabMensSigns, 1).indexOf(String.valueOf(bar));
 			String tabMs = 
 				(ONLY_TRANS && tab == null) ? null :
-//				ONLY_TRANS ? null : 
 				(indInTabMs == -1 ? null : tabMensSigns.get(indInTabMs)[0]);
 
 			Integer[] currMi = mi.get(
@@ -506,234 +504,241 @@ public class MEIExport {
 			boolean includeClef = bar == 1;
 			boolean includeKey = (TAB_AND_TRANS || ONLY_TRANS) && currKi[currKi.length - 1] == 1;
 			boolean includeMeter = 
-				(ONLY_TAB || TAB_AND_TRANS) ? currMi[currMi.length - 1] == 1 && tabMs != null : 
-				currMi[currMi.length - 1] == 1;
+				(ONLY_TAB || TAB_AND_TRANS || (ONLY_TRANS && tab != null)) ? 
+					currMi[currMi.length - 1] == 1 && tabMs != null : 
+					currMi[currMi.length - 1] == 1;
 
-			// Determine count, unit, and sym
-			int count = -1;
-			int unit = -1;
-			String sym = null;
-			if (includeMeter) {
-				count = currMi[Transcription.MI_NUM];
-				unit = currMi[Transcription.MI_DEN];
-				// Overrule if tabMs gives a different meter (occurs only in the tablature
-				// case, when the first bar is an anacrusis)
-				if (tabMs != null) {
-					// Take into account double MS (such as MO.M3), where the individual parts
-					// represent the same MS
-					String tMs = 
-						tabMs.contains(Symbol.SYMBOL_SEPARATOR) ? 
-						tabMs.substring(0, tabMs.indexOf(Symbol.SYMBOL_SEPARATOR)) :
-						tabMs;
-					Integer[] meter = MensurationSign.getMensurationSign(tMs).getMeter();
-					if (!(new Rational(meter[0], meter[1]).equals(new Rational(count, unit)))) {
-						count = meter[0];
-						unit = meter[1];
-					}
-				}
-				if (count == 4 && unit == 4) {
-					sym = "common";
-				}
-				else if (count == 2 && unit == 2) {
-					sym = "cut";
-				}
+			// Only add the scoreDef if there is a *specified* meter change or a key change 
+			if (!(includeMeter || includeKey)) {
+				scoreDefs.add(null);
 			}
-			// Determine sig 
-			String sig = null;
-			if (includeKey) {
-				int ks = currKi[Transcription.KI_KEY];
-				sig = String.valueOf(Math.abs(ks)) + (ks == 0 ? "" : ((ks < 0) ? "f" : "s"));
-			}
-
-			// 1. Make staffDefTab, containing <tuning> and <meterSig> (both optional)
-			List<String> staffDefTab = new ArrayList<>();
-			if (ONLY_TAB || TAB_AND_TRANS) {
-				// TODO change to "tab.lute" + tss.getName().toLowerCase() when GLT MEI is available
-				String notationtypeStr = "tab.lute.";
-				notationtypeStr += 
-					(tss != TabSymbolSet.FRENCH && tss != TabSymbolSet.ITALIAN && 
-					tss != TabSymbolSet.SPANISH) ? "french" : 
-					tss.getName().toLowerCase();
-
-				staffDefTab.add(makeOpeningTag("staffDef", false,
-					new String[][]{
-						{"xml:id", addUniqueID("sd", xmlIDs).get(xmlIDs.size() - 1)},
-						{"n", String.valueOf(slsTab[0])},
-						{"lines", "6"},
-						{"notationtype", notationtypeStr},
-						{"tab.dur.sym.ratio", "1"} // TODO remove?
-					}
-				));
-				// Add tuning
-				if (includeTuning) {
-					boolean isSimpleTuning = false;
-					if (isSimpleTuning) {
-						staffDefTab.add(TAB + makeOpeningTag("tuning", true,
-							new String[][]{
-								{"xml:id", addUniqueID("t", xmlIDs).get(xmlIDs.size() - 1)},
-								{"tuning.standard", String.join(
-									".", "lute", tuning.getEra().toLowerCase(), 
-									String.valueOf(tuning.getCourses().size()))}
-							}
-						));
-					}
-					else {
-						staffDefTab.add(TAB + makeOpeningTag("tuning", false, 
-							new String[][]{
-								{"xml:id", addUniqueID("t", xmlIDs).get(xmlIDs.size() - 1)}
-							}
-						));
-						List<String> courses = new ArrayList<String>(tuning.getCourses());
-						Collections.reverse(courses);
-						List<Integer> intervals = new ArrayList<Integer>(tuning.getIntervals());
-						Collections.reverse(intervals);
-						int pitch = tuning.getPitchLowestCourse() + ToolBox.sumListInteger(intervals) ;
-						for (int i = 0; i < courses.size(); i++) {
-							staffDefTab.add(TAB + TAB + makeOpeningTag("course", true, 
-								new String[][]{
-									{"xml:id", addUniqueID("c", xmlIDs).get(xmlIDs.size() - 1)},
-									{"n", String.valueOf((i+1))},
-									{"pname", courses.get(i).toLowerCase()},
-									{"oct", String.valueOf(PitchKeyTools.getOctave(pitch))}
-								}
-							));
-							if (i < courses.size() - 1) {
-								pitch -= intervals.get(i);
-							}
-						}
-						staffDefTab.add(TAB + makeClosingTag("tuning"));
-					}
-				}
-				// Add meterSig
+			else {
+				// Determine count, unit, and sym
+				int count = -1;
+				int unit = -1;
+				String sym = null;
 				if (includeMeter) {
-					// In case of a triple meter, show only the count (always 3)
-					// NB: applies only to tablature case
-					if (count == 6) {
-						count /= 2;
-						unit /= 2;
+					count = currMi[Transcription.MI_NUM];
+					unit = currMi[Transcription.MI_DEN];
+					// Overrule if tabMs gives a different meter (occurs only in the tablature
+					// case, when the first bar is an anacrusis)
+					if (tabMs != null) {
+						// Take into account double MS (such as MO.M3), where the individual parts
+						// represent the same MS
+						String tMs = 
+							tabMs.contains(Symbol.SYMBOL_SEPARATOR) ? 
+							tabMs.substring(0, tabMs.indexOf(Symbol.SYMBOL_SEPARATOR)) :
+							tabMs;
+						Integer[] meter = MensurationSign.getMensurationSign(tMs).getMeter();
+						if (!(new Rational(meter[0], meter[1]).equals(new Rational(count, unit)))) {
+							count = meter[0];
+							unit = meter[1];
+						}
 					}
-					staffDefTab.add(TAB + makeOpeningTag("meterSig", true,
+					if (count == 4 && unit == 4) {
+						sym = "common";
+					}
+					else if (count == 2 && unit == 2) {
+						sym = "cut";
+					}
+				}
+				// Determine sig 
+				String sig = null;
+				if (includeKey) {
+					int ks = currKi[Transcription.KI_KEY];
+					sig = String.valueOf(Math.abs(ks)) + (ks == 0 ? "" : ((ks < 0) ? "f" : "s"));
+				}
+
+				// 1. Make staffDefTab, containing <tuning> and <meterSig> (both optional)
+				List<String> staffDefTab = new ArrayList<>();
+				if (ONLY_TAB || TAB_AND_TRANS) {
+					// TODO change to "tab.lute" + tss.getName().toLowerCase() when GLT MEI is available
+					String notationtypeStr = "tab.lute.";
+					notationtypeStr += 
+						(tss != TabSymbolSet.FRENCH && tss != TabSymbolSet.ITALIAN && 
+						tss != TabSymbolSet.SPANISH) ? "french" : 
+						tss.getName().toLowerCase();
+
+					staffDefTab.add(makeOpeningTag("staffDef", false,
 						new String[][]{
-							{"xml:id", addUniqueID("ms", xmlIDs).get(xmlIDs.size() - 1)},
-							{"count", String.valueOf(count)},
-							{"unit", String.valueOf(unit)},
-							(count != 3 ? new String[]{"sym", sym} : new String[]{"form", "num"})
+							{"xml:id", addUniqueID("sd", xmlIDs).get(xmlIDs.size() - 1)},
+							{"n", String.valueOf(slsTab[0])},
+							{"lines", "6"},
+							{"notationtype", notationtypeStr},
+							{"tab.dur.sym.ratio", "1"} // TODO remove?
 						}
 					));
-				}
-				staffDefTab.add(makeClosingTag("staffDef"));
-			}
-
-			// 2. Make staffGrpTrans, containing <staffDef>s containing <clef>, <keySig>, and 
-			// <metersig> (all optional)    
-			List<String> staffGrpTrans = new ArrayList<>(); 
-			if (ONLY_TRANS || TAB_AND_TRANS) {
-				int firstStaff = slsTrans.get(0)[0];
-				staffGrpTrans.add(makeOpeningTag("staffGrp", false,
-					new String[][]{
-						{"xml:id", addUniqueID("sg", xmlIDs).get(xmlIDs.size() - 1)},
-						{"symbol", "bracket"},
-						{"bar.thru", "true"}
-					}
-				));
-				// For each <staffDef> in the <staffGrp>
-				for (int i = 0; i < numStaffs; i++) {
-					// Add staffDef
-					String[][] atts = new String[][]{
-						{"xml:id", addUniqueID("sd", xmlIDs).get(xmlIDs.size() - 1)},
-						{"n", String.valueOf(firstStaff + i)},
-						{"lines", "5"},
-					};
-					if (useBasicMEI && includeKey) {
-						String[][] keysig = new String[][]{{"keysig", sig}};
-						atts = Stream.concat(Arrays.stream(atts), Arrays.stream(keysig)).toArray(String[][]::new);
-					}
-					if (useBasicMEI && includeMeter) {
-						String[][] meter = new String[][]{
-							{"meter.count", String.valueOf(count)},
-							{"meter.unit", String.valueOf(unit)}
-						};
-						atts = Stream.concat(Arrays.stream(atts), Arrays.stream(meter)).toArray(String[][]::new);
-					}
-					staffGrpTrans.add(TAB + makeOpeningTag("staffDef", false, atts));
-					// Add clef
-					if (includeClef) {
-						String[] clef = clefs.get(i);
-						staffGrpTrans.add(TAB + TAB + makeOpeningTag("clef", true,
-							new String[][]{
-								{"xml:id", addUniqueID("c", xmlIDs).get(xmlIDs.size() - 1)},
-								{"shape", clef[0]},
-								{"line", clef[1]}
-							} 
-						));
-					}
-					// Add keySig
-					if (includeKey) {
-						staffGrpTrans.add(TAB + TAB + makeOpeningTag("keySig", true,
-							new String[][]{
-								{"xml:id", addUniqueID("ks", xmlIDs).get(xmlIDs.size() - 1)},
-								{"sig", sig},
-								{"mode", currKi[Transcription.KI_MODE] == 0 ? "major" : "minor"}
+					// Add tuning
+					if (includeTuning) {
+						boolean isSimpleTuning = false;
+						if (isSimpleTuning) {
+							staffDefTab.add(TAB + makeOpeningTag("tuning", true,
+								new String[][]{
+									{"xml:id", addUniqueID("t", xmlIDs).get(xmlIDs.size() - 1)},
+									{"tuning.standard", String.join(
+										".", "lute", tuning.getEra().toLowerCase(), 
+										String.valueOf(tuning.getCourses().size()))}
+								}
+							));
+						}
+						else {
+							staffDefTab.add(TAB + makeOpeningTag("tuning", false, 
+								new String[][]{
+									{"xml:id", addUniqueID("t", xmlIDs).get(xmlIDs.size() - 1)}
+								}
+							));
+							List<String> courses = new ArrayList<String>(tuning.getCourses());
+							Collections.reverse(courses);
+							List<Integer> intervals = new ArrayList<Integer>(tuning.getIntervals());
+							Collections.reverse(intervals);
+							int pitch = tuning.getPitchLowestCourse() + ToolBox.sumListInteger(intervals) ;
+							for (int i = 0; i < courses.size(); i++) {
+								staffDefTab.add(TAB + TAB + makeOpeningTag("course", true, 
+									new String[][]{
+										{"xml:id", addUniqueID("c", xmlIDs).get(xmlIDs.size() - 1)},
+										{"n", String.valueOf((i+1))},
+										{"pname", courses.get(i).toLowerCase()},
+										{"oct", String.valueOf(PitchKeyTools.getOctave(pitch))}
+									}
+								));
+								if (i < courses.size() - 1) {
+									pitch -= intervals.get(i);
+								}
 							}
-						));
+							staffDefTab.add(TAB + makeClosingTag("tuning"));
+						}
 					}
 					// Add meterSig
 					if (includeMeter) {
-						staffGrpTrans.add(TAB + TAB + makeOpeningTag("meterSig", true,
+						// In case of a triple meter, show only the count (always 3)
+						// NB: applies only to tablature case
+						if (count == 6) {
+							count /= 2;
+							unit /= 2;
+						}
+						staffDefTab.add(TAB + makeOpeningTag("meterSig", true,
 							new String[][]{
 								{"xml:id", addUniqueID("ms", xmlIDs).get(xmlIDs.size() - 1)},
 								{"count", String.valueOf(count)},
 								{"unit", String.valueOf(unit)},
-								(count != 3 ? new String[]{"sym", sym} : 
-									(TAB_AND_TRANS ? new String[]{"form", "num"} : null))
+								(count != 3 ? new String[]{"sym", sym} : new String[]{"form", "num"})
 							}
-						));		
+						));
 					}
-					staffGrpTrans.add(TAB + makeClosingTag("staffDef"));
+					staffDefTab.add(makeClosingTag("staffDef"));
 				}
-				staffGrpTrans.add(makeClosingTag("staffGrp"));
-			}
 
-			// 3. Construct scoreDef (see schema above)
-			currScoreDef.add(makeOpeningTag("scoreDef", false, 
-				new String[][]{
-					{"xml:id", addUniqueID("sd", xmlIDs).get(xmlIDs.size() - 1)}
+				// 2. Make staffGrpTrans, containing <staffDef>s containing <clef>, <keySig>, and 
+				// <metersig> (all optional)    
+				List<String> staffGrpTrans = new ArrayList<>(); 
+				if (ONLY_TRANS || TAB_AND_TRANS) {
+					int firstStaff = slsTrans.get(0)[0];
+					staffGrpTrans.add(makeOpeningTag("staffGrp", false,
+						new String[][]{
+							{"xml:id", addUniqueID("sg", xmlIDs).get(xmlIDs.size() - 1)},
+							{"symbol", "bracket"},
+							{"bar.thru", "true"}
+						}
+					));
+					// For each <staffDef> in the <staffGrp>
+					for (int i = 0; i < numStaffs; i++) {
+						// Add staffDef
+						String[][] atts = new String[][]{
+							{"xml:id", addUniqueID("sd", xmlIDs).get(xmlIDs.size() - 1)},
+							{"n", String.valueOf(firstStaff + i)},
+							{"lines", "5"},
+						};
+						if (useBasicMEI && includeKey) {
+							String[][] keysig = new String[][]{{"keysig", sig}};
+							atts = Stream.concat(Arrays.stream(atts), Arrays.stream(keysig)).toArray(String[][]::new);
+						}
+						if (useBasicMEI && includeMeter) {
+							String[][] meter = new String[][]{
+								{"meter.count", String.valueOf(count)},
+								{"meter.unit", String.valueOf(unit)}
+							};
+							atts = Stream.concat(Arrays.stream(atts), Arrays.stream(meter)).toArray(String[][]::new);
+						}
+						staffGrpTrans.add(TAB + makeOpeningTag("staffDef", false, atts));
+						// Add clef
+						if (includeClef) {
+							String[] clef = clefs.get(i);
+							staffGrpTrans.add(TAB + TAB + makeOpeningTag("clef", true,
+								new String[][]{
+									{"xml:id", addUniqueID("c", xmlIDs).get(xmlIDs.size() - 1)},
+									{"shape", clef[0]},
+									{"line", clef[1]}
+								} 
+							));
+						}
+						// Add keySig
+						if (includeKey) {
+							staffGrpTrans.add(TAB + TAB + makeOpeningTag("keySig", true,
+								new String[][]{
+									{"xml:id", addUniqueID("ks", xmlIDs).get(xmlIDs.size() - 1)},
+									{"sig", sig},
+									{"mode", currKi[Transcription.KI_MODE] == 0 ? "major" : "minor"}
+								}
+							));
+						}
+						// Add meterSig
+						if (includeMeter) {
+							staffGrpTrans.add(TAB + TAB + makeOpeningTag("meterSig", true,
+								new String[][]{
+									{"xml:id", addUniqueID("ms", xmlIDs).get(xmlIDs.size() - 1)},
+									{"count", String.valueOf(count)},
+									{"unit", String.valueOf(unit)},
+									(count != 3 ? new String[]{"sym", sym} : 
+										(TAB_AND_TRANS ? new String[]{"form", "num"} : null))
+								}
+							));		
+						}
+						staffGrpTrans.add(TAB + makeClosingTag("staffDef"));
+					}
+					staffGrpTrans.add(makeClosingTag("staffGrp"));
 				}
-			));
-			List<String> tabPart = new ArrayList<>();
-			staffDefTab.forEach(s -> tabPart.add(TAB.repeat(2) + s));
-			List<String> transPart = new ArrayList<>();
-			staffGrpTrans.forEach(s -> transPart.add((ONLY_TRANS ? TAB : TAB.repeat(2)) + s));
-			if (ONLY_TAB) {
-				currScoreDef.add(TAB + makeOpeningTag("staffGrp", false, 
+
+				// 3. Construct scoreDef (see schema above)
+				currScoreDef.add(makeOpeningTag("scoreDef", false, 
 					new String[][]{
-						{"xml:id", addUniqueID("sg", xmlIDs).get(xmlIDs.size() - 1)}
+						{"xml:id", addUniqueID("sd", xmlIDs).get(xmlIDs.size() - 1)}
 					}
 				));
-				currScoreDef.addAll(tabPart);
-				currScoreDef.add(TAB + makeClosingTag("staffGrp"));
-			}
-			else if (ONLY_TRANS) {
-				currScoreDef.addAll(transPart);
-			}
-			else {
-				currScoreDef.add(TAB + makeOpeningTag("staffGrp", false, 
-					new String[][]{
-						{"xml:id", addUniqueID("sg", xmlIDs).get(xmlIDs.size() - 1)}
-					}
-				));
-				if (TAB_ON_TOP) {
+				List<String> tabPart = new ArrayList<>();
+				staffDefTab.forEach(s -> tabPart.add(TAB.repeat(2) + s));
+				List<String> transPart = new ArrayList<>();
+				staffGrpTrans.forEach(s -> transPart.add((ONLY_TRANS ? TAB : TAB.repeat(2)) + s));
+				if (ONLY_TAB) {
+					currScoreDef.add(TAB + makeOpeningTag("staffGrp", false, 
+						new String[][]{
+							{"xml:id", addUniqueID("sg", xmlIDs).get(xmlIDs.size() - 1)}
+						}
+					));
 					currScoreDef.addAll(tabPart);
+					currScoreDef.add(TAB + makeClosingTag("staffGrp"));
+				}
+				else if (ONLY_TRANS) {
 					currScoreDef.addAll(transPart);
 				}
 				else {
-					currScoreDef.addAll(transPart);
-					currScoreDef.addAll(tabPart);
+					currScoreDef.add(TAB + makeOpeningTag("staffGrp", false, 
+						new String[][]{
+							{"xml:id", addUniqueID("sg", xmlIDs).get(xmlIDs.size() - 1)}
+						}
+					));
+					if (TAB_ON_TOP) {
+						currScoreDef.addAll(tabPart);
+						currScoreDef.addAll(transPart);
+					}
+					else {
+						currScoreDef.addAll(transPart);
+						currScoreDef.addAll(tabPart);
+					}
+					currScoreDef.add(TAB + makeClosingTag("staffGrp"));
 				}
-				currScoreDef.add(TAB + makeClosingTag("staffGrp"));
+				currScoreDef.add(makeClosingTag("scoreDef"));
+				scoreDefs.add(currScoreDef);
 			}
-			currScoreDef.add(makeClosingTag("scoreDef"));
-			scoreDefs.add(currScoreDef);
 		}
 
 		return scoreDefs;
