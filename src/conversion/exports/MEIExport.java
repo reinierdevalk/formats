@@ -249,8 +249,6 @@ public class MEIExport {
 
 		String tp = CLInterface.getPathString(Arrays.asList(paths.get("TEMPLATES_PATH")));
 		String mei = ToolBox.readTextFile(new File(tp + paths.get("MEI_TEMPLATE")));
-//		String mei = ToolBox.readTextFile(new File(getTemplatesPath() + "template-MEI.xml"));
-//		String mei = ToolBox.readTextFile(new File(tp + "template-MEI.xml"));
 		String path = dict[0];
 
 		boolean includeTab = transParams.get(CLInterface.TABLATURE).equals("y");
