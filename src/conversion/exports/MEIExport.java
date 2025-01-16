@@ -239,6 +239,8 @@ public class MEIExport {
 //		System.out.println("\r\n>>> MEIExport.exportMEIFile() called");
 
 		System.out.println("hier!");
+//		- why is the key sig 2s
+//		- make algorithm to derive keysig from tuning
 		for (Map.Entry<String, String> entry : transParams.entrySet()) {
 			System.out.println(entry.getKey() + " -- " + entry.getValue());
 		}
@@ -465,6 +467,7 @@ public class MEIExport {
 				GRAND_STAFF, numVoices, -1
 			);
 		}
+
 		List<Integer[]> slsTrans = null;
 		List<String[]> clefs = null;
 		int numStaffs = GRAND_STAFF ? 2 : numVoices;

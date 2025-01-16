@@ -37,6 +37,10 @@ public class MIDIImport {
 	public static final String EXTENSION = ".mid";
 
 	public static void main(String[] args) {
+		
+	}
+	
+	public static void main2(String[] args) {
 		List<String> pieces = Arrays.asList(new String[]{
 				"bach-WTC1-fuga_4-BWV_849",
 				"bach-WTC1-fuga_4-BWV_849-split_at_44-65-86_1", 
@@ -251,7 +255,7 @@ public class MIDIImport {
 				toRemove.add(i);
 			}
 			// Special case for 2vv inventions that have one note in tr2, ch9 and tr3, ch9  
-			else if (nst.get(0).size() == 1) {
+			else if (f.getName().contains("bach-inv-inventio") && nst.get(0).size() == 1) {
 				toRemove.add(i);
 			}
 		}
