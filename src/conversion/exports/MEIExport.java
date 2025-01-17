@@ -238,11 +238,12 @@ public class MEIExport {
 		String[] dict) {
 //		System.out.println("\r\n>>> MEIExport.exportMEIFile() called");
 
-		System.out.println("hier!");
-//		- why is the key sig 2s
 //		- make algorithm to derive keysig from tuning
-		for (Map.Entry<String, String> entry : transParams.entrySet()) {
-			System.out.println(entry.getKey() + " -- " + entry.getValue());
+		if (transParams != null) {
+			System.out.println("hier!");
+			for (Map.Entry<String, String> entry : transParams.entrySet()) {
+				System.out.println(entry.getKey() + " -- " + entry.getValue());
+			}
 		}
 
 		String INDENT_SCORE = TAB.repeat(4); // for the <score>
@@ -253,7 +254,8 @@ public class MEIExport {
 		String mei = ToolBox.readTextFile(new File(tp + paths.get("MEI_TEMPLATE")));
 		String path = dict[0];
 
-		boolean includeTab = transParams.get(CLInterface.TABLATURE).equals("y");
+		boolean includeTab = 
+			transParams == null ? true : transParams.get(CLInterface.TABLATURE).equals("y");
 
 		ONLY_TAB = tab != null && trans == null;
 		TAB_AND_TRANS = tab != null && trans != null;
@@ -448,17 +450,47 @@ public class MEIExport {
 
 		boolean useBasicMEI = true; // TODO
 
-		TabSymbolSet tss = null;
 		Tuning tuning = null;
+		TabSymbolSet tss = null;
 		List<String[]> tabMensSigns = null;
 		Integer[] slsTab = null;
 		if (ONLY_TAB || TAB_AND_TRANS) {
-			String tabType = transParams.get(CLInterface.TYPE);
-			tss = Arrays.stream(TabSymbolSet.values())
-				.filter(t -> t.getShortType().equals(tabType))
-				.findFirst()
-				.orElse(null);
-			tuning = tab.getTunings()[0];
+			// tuning
+			if (transParams == null) {
+				tuning = tab.getTunings()[0];
+			}
+			else {
+				String argsTuning = transParams.get(CLInterface.TUNING);
+				if (argsTuning.equals("i")) {
+					// Tuning is always provided in input .tbp file (required)
+					tuning = tab.getTunings()[0];					
+				}
+				else {
+					tuning = Tuning.getTuning(argsTuning);
+				}
+			}
+			// tss (type)
+			if (transParams == null) {
+				tss = tab.getEncoding().getTabSymbolSet();
+			}
+			else {
+				String argsType = transParams.get(CLInterface.TYPE);
+				if (argsType.equals("i")) {
+					System.out.println("IF");
+					// Type is always provided in input .tbp file (required)
+					tss = tab.getEncoding().getTabSymbolSet();
+				}
+				else {
+					System.out.println("ELSE");
+					tss = TabSymbolSet.getTabSymbolSet(null, argsType);
+				}
+				
+//				tss = Arrays.stream(TabSymbolSet.values())
+//					.filter(t -> t.getShortType().equals(argsType))
+//					.findFirst()
+//					.orElse(null);
+			}
+
 			// NB: tabMensSigns aligns with mi, i.e., each of its elements corresponds to
 			// an element with the same bar and metric time in mi (but not vice versa)
 			tabMensSigns = tab.getMensurationSigns();

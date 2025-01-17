@@ -104,7 +104,12 @@ public class TabSymbol extends Symbol implements Serializable {
 				}
 			}
 			if (t != null) {
-				return t.equals("German") ? TabSymbolSet.NEWSIDLER_1536 : getTabSymbolSet(t, null);
+				for (TabSymbolSet tss : TabSymbolSet.values()) { 
+					if (tss.getType().equals(t) || tss.getShortType().equals(t)) {
+						return tss;
+					}
+				}
+//				return t.equals("German") ? TabSymbolSet.NEWSIDLER_1536 : getTabSymbolSet(t, null);
 			}
 			return null;
 		}
