@@ -41,8 +41,9 @@ public class MEIExportTest {
 	public void setUp() throws Exception {
 		Map<String, String> paths = CLInterface.getPaths(true);
 		String ep = paths.get("ENCODINGS_PATH");
-		String td = "test/5vv/";
 		String mp = paths.get("MIDI_PATH");
+		String td = "test/5vv/";
+
 		encodingTestpiece = new File(
 			CLInterface.getPathString(Arrays.asList(ep, td)) + "testpiece.tbp"
 		);

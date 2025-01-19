@@ -27,6 +27,7 @@ public class MIDIExportTest {
 		Map<String, String> paths = CLInterface.getPaths(true);
 		String mp = paths.get("MIDI_PATH");
 		String td = "test/5vv/";
+
 		midiTestGetMeterInfo = new File(CLInterface.getPathString(
 			Arrays.asList(mp, td)) + "test_get_meter_key_info.mid"
 		);
