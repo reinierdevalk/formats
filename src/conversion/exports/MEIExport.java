@@ -461,7 +461,7 @@ public class MEIExport {
 			}
 			else {
 				String argsTuning = transParams.get(CLInterface.TUNING);
-				if (argsTuning.equals("i")) {
+				if (argsTuning.equals(CLInterface.INPUT)) {
 					// Tuning is always provided in input .tbp file (required)
 					tuning = tab.getTunings()[0];					
 				}
@@ -475,13 +475,11 @@ public class MEIExport {
 			}
 			else {
 				String argsType = transParams.get(CLInterface.TYPE);
-				if (argsType.equals("i")) {
-					System.out.println("IF");
+				if (argsType.equals(CLInterface.INPUT)) {
 					// Type is always provided in input .tbp file (required)
 					tss = tab.getEncoding().getTabSymbolSet();
 				}
 				else {
-					System.out.println("ELSE");
 					tss = TabSymbolSet.getTabSymbolSet(null, argsType);
 				}
 				
@@ -1479,6 +1477,11 @@ public class MEIExport {
 				pitch, currKi[Transcription.KI_KEY], grids, accidsInEffect
 			);
 			String[] pa = (String[]) pitchSpell.get(0);
+			System.out.println("pname = " + pa[0]);
+			System.out.println("accid = " + pa[1]);
+			System.out.println("acges = " +pa[2]);
+			System.out.println("- - - - - - - - -");
+
 			List<List<Integer>> aie = (List<List<Integer>>) pitchSpell.get(1);
 			doubleFlatsInEffect = aie.get(0);
 			flatsInEffect = aie.get(1);
