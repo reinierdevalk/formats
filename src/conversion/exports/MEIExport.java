@@ -234,17 +234,16 @@ public class MEIExport {
 	 * @param dict
 	 */
 	public static String exportMEIFile(Transcription trans, Tablature tab, List<List<Integer>> mismatchInds, 
-		boolean grandStaff, boolean tabOnTop, Map<String, String> paths, Map<String, String> transParams, 
+		boolean grandStaff, boolean tabOnTop, Map<String, String> paths, Map<String, String> cliOptsVals, 
 		String[] dict) {
 //		System.out.println("\r\n>>> MEIExport.exportMEIFile() called");
 
-//		- make algorithm to derive keysig from tuning
-		if (transParams != null) {
-			System.out.println("hier!");
-			for (Map.Entry<String, String> entry : transParams.entrySet()) {
-				System.out.println(entry.getKey() + " -- " + entry.getValue());
-			}
-		}
+//		if (cliOptsVals != null) {
+//			System.out.println("hier!");
+//			for (Map.Entry<String, String> entry : cliOptsVals.entrySet()) {
+//				System.out.println(entry.getKey() + " -- " + entry.getValue());
+//			}
+//		}
 
 		String INDENT_SCORE = TAB.repeat(4); // for the <score>
 		String INDENT_ONE = INDENT_SCORE + TAB; // for the main <scoreDef> and all <section>s
@@ -254,8 +253,7 @@ public class MEIExport {
 		String mei = ToolBox.readTextFile(new File(tp + paths.get("MEI_TEMPLATE")));
 		String path = dict[0];
 
-		boolean includeTab = 
-			transParams == null ? true : transParams.get(CLInterface.TABLATURE).equals("y");
+		boolean includeTab = cliOptsVals.get(CLInterface.TABLATURE).equals("y");
 
 		ONLY_TAB = tab != null && trans == null;
 		TAB_AND_TRANS = tab != null && trans != null;
@@ -263,8 +261,8 @@ public class MEIExport {
 			(tab == null && trans != null) // there is no tab
 			||
 			((tab != null && !includeTab) && trans != null); // there is a tab but it is not included
-		TAB_ON_TOP = tabOnTop;
-		GRAND_STAFF = grandStaff;
+		TAB_ON_TOP = tabOnTop; // TODO make cliOptsVals option; in DEV case, set to true
+		GRAND_STAFF = grandStaff; // TODO make cliOptsVals option; in DEV case, set to true
 
 		List<Integer[]> mi = 
 			ONLY_TAB || TAB_AND_TRANS ? tab.getMeterInfoAgnostic() : trans.getMeterInfo();
@@ -308,7 +306,7 @@ public class MEIExport {
 		int numBars = mi.get(mi.size()-1)[Transcription.MI_LAST_BAR];
 		List<Integer> sectionBars = ToolBox.getItemsAtIndex(mi, Transcription.MI_FIRST_BAR);
 		// a. Get all <scoreDef>s
-		List<List<String>> scoreDefs = makeScoreDefs(tab, mi, ki, transParams, sectionBars, numVoices);
+		List<List<String>> scoreDefs = makeScoreDefs(tab, mi, ki, cliOptsVals, sectionBars, numVoices);
 		// b. Get all tab bars
 		List<List<String>> tabBars = null;
 		if (ONLY_TAB || TAB_AND_TRANS) {
@@ -333,9 +331,6 @@ public class MEIExport {
 			Integer[] currMi = mi.get(
 				ToolBox.getItemsAtIndex(mi, Transcription.MI_FIRST_BAR).indexOf(sectionFirstBar)
 			);
-			Integer[] currKi = ki.get(
-				ToolBox.getItemsAtIndex(ki, Transcription.KI_FIRST_BAR).indexOf(sectionFirstBar)
-			);
 			List<String> currScoreDef = scoreDefs.get(i);
 
 			// Add <section>
@@ -351,11 +346,19 @@ public class MEIExport {
 					label = "meter change (unspecified)";
 				}
 				else {
-					label = 
-						currMi[currMi.length - 1] == 1 && currKi[currKi.length - 1] == 0 ? "meter change" :
-						(currMi[currMi.length - 1] == 0 && currKi[currKi.length - 1] == 1 ? "key change" : 
-						 "meter and key change"
+					if (ONLY_TAB) {
+						label = "meter change";
+					}
+					else {
+						Integer[] currKi = ki.get(
+							ToolBox.getItemsAtIndex(ki, Transcription.KI_FIRST_BAR).indexOf(sectionFirstBar)
 						);
+						label = 
+							currMi[currMi.length - 1] == 1 && currKi[currKi.length - 1] == 0 ? "meter change" :
+							(currMi[currMi.length - 1] == 0 && currKi[currKi.length - 1] == 1 ? "key change" : 
+							 "meter and key change"
+							);
+					}
 				}
 				atts[atts.length -1] = new String[]{"label", label};
 			}

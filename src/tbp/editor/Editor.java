@@ -663,7 +663,7 @@ public class Editor extends JFrame{
 				}
 				// Export case
 				else {
-					String fname = "rore-anchor_che_col"; // TODO
+					String fname = ToolBox.splitExt(f.getName())[0];
 					Encoding e = new Encoding(
 						etaContent, fname, Stage.RULES_CHECKED
 					);
@@ -674,11 +674,14 @@ public class Editor extends JFrame{
 						content = makeASCIITab(e);
 					}
 					else if (exportType.equals(MEI)) {
-						Map<String, String> cliOptsVals = new LinkedHashMap<String, String>(); // olja 10.12
-						cliOptsVals.put(CLInterface.TABLATURE, "y");
+						// Make transParams, containing only those params that MEIExport needs
+						Map<String, String> transParams = new LinkedHashMap<String, String>();
+						transParams.put(CLInterface.TUNING, CLInterface.INPUT);
+						transParams.put(CLInterface.TABLATURE, "y");
+						transParams.put(CLInterface.TYPE, CLInterface.INPUT);
 						content = MEIExport.exportMEIFile(
 							null, new Tablature(e, false), null, false, false, getPaths(),
-							cliOptsVals, new String[]{null, "abtab -- converter"}
+							transParams, new String[]{null, "abtab -- converter"}
 						);
 					}
 				}
