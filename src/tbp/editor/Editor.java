@@ -117,8 +117,15 @@ public class Editor extends JFrame{
 	// try-catch block is only needed when reading from a File using a BufferedReader
 	public static void main(String[] args) {
 		boolean dev = args.length == 0 ? true : args[0].equals(String.valueOf(true));
+		String source = args[1];
+		String destination = args[2];
 		Map<String, String> argPaths = CLInterface.getPaths(dev);
-		new Editor(argPaths);
+		if (args.length == 1 || source.equals("") && destination.equals("")) {
+			new Editor(argPaths);
+		}
+		else {
+			System.out.println("TODO");
+		}
 	}
 
 
