@@ -75,16 +75,8 @@ public class TabImport {
 	public static final String TC_EXT = ".tc";
 	public static final String TAB_EXT = ".tab";
 
-	public static final List<String> ALLOWED_FILE_FORMATS = Arrays.asList(
-		Encoding.EXTENSION, 
-		TC_EXT, 
-		MEIExport.MEI_EXT, 
-		MEIExport.MEI_EXT_ALT
-	);
-
 
 	public static void main(String[] args) {
-		
 	}
 	
 	public static void main2(String[] args) {
@@ -231,7 +223,7 @@ public class TabImport {
 				System.out.println(f);
 				String tc = ToolBox.readTextFile(f).trim();
 				tbp = tc2tbp(tc);
-				ToolBox.storeTextFile(tbp, new File(path + s + Encoding.EXTENSION));
+				ToolBox.storeTextFile(tbp, new File(path + s + Encoding.TBP_EXT));
 			}
 			System.exit(0);
 
@@ -240,7 +232,7 @@ public class TabImport {
 				File f = new File(path + s + TAB_EXT);
 				String ascii = ToolBox.readTextFile(f).trim();
 				tbp = ascii2tbp(ascii);
-				ToolBox.storeTextFile(tbp, new File(path + s + "XXX" + Encoding.EXTENSION));
+				ToolBox.storeTextFile(tbp, new File(path + s + "XXX" + Encoding.TBP_EXT));
 			}
 		}
 		else {
@@ -252,7 +244,7 @@ public class TabImport {
 			System.out.println(f);
 			String tc = ToolBox.readTextFile(f).trim();
 			String tbp = tc2tbp(tc);
-			ToolBox.storeTextFile(tbp, new File(outPath + "/" + filename + Encoding.EXTENSION));
+			ToolBox.storeTextFile(tbp, new File(outPath + "/" + filename + Encoding.TBP_EXT));
 		}
 	}
 

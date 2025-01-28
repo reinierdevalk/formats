@@ -69,7 +69,7 @@ public class Editor extends JFrame{
 //	private static final String MEI_EXTENSION_ALT = ".mei";
 	private static final String TBP = "tab+";
 	private static final String[] TITLE = new String[]{
-		"untitled", Encoding.EXTENSION, " - " + "tab+Editor"
+		"untitled", Encoding.TBP_EXT, " - " + "tab+Editor"
 	};
 
 	private static final Map<String, String> EXTENSIONS;
@@ -77,8 +77,8 @@ public class Editor extends JFrame{
 		EXTENSIONS.put(TabImport.TAB_EXT, ASCII);
 		EXTENSIONS.put(TabImport.TC_EXT, TC);
 		EXTENSIONS.put(MEIExport.MEI_EXT, MEI);
-		EXTENSIONS.put(MEIExport.MEI_EXT_ALT, MEI);
-		EXTENSIONS.put(Encoding.EXTENSION, TBP);
+		EXTENSIONS.put(MEIExport.XML_EXT, MEI);
+		EXTENSIONS.put(Encoding.TBP_EXT, TBP);
 	}
 
 	private static final int HM = 15; // horizontal margin
@@ -120,11 +120,57 @@ public class Editor extends JFrame{
 		String source = args[1];
 		String destination = args[2];
 		Map<String, String> argPaths = CLInterface.getPaths(dev);
-		if (args.length == 1 || source.equals("") && destination.equals("")) {
+
+		// No source and destination provided: convert through editor
+		if (source.equals("") && destination.equals("")) {
 			new Editor(argPaths);
 		}
+		// Convert directly
 		else {
-			System.out.println("TODO");
+			String cp = argPaths.get("CONVERTER_PATH");
+			String inputName = ToolBox.splitExt(source)[0];
+			String inputFormat = ToolBox.splitExt(source)[1];
+			String outputName = ToolBox.splitExt(destination)[0];
+			String outputFormat = ToolBox.splitExt(destination)[1];
+			
+			System.out.println(inputFormat.equals(TabImport.TC_EXT));
+			System.out.println(outputFormat.equals(MEIExport.MEI_EXT));
+			
+			String fileContent = ToolBox.readTextFile(new File(cp + source));
+			
+			// MEI
+			if (inputFormat.equals(MEIExport.MEI_EXT) || inputFormat.equals(MEIExport.XML_EXT)) {
+				
+			}
+			// ASCII
+			else if (inputFormat.equals(TabImport.TAB_EXT)) {
+
+			}
+			// tab+
+			else if (inputFormat.equals(Encoding.TBP_EXT)) {
+
+			}
+			// TabCode
+			if (inputFormat.equals(TabImport.TC_EXT)) {
+				String tbp = TabImport.tc2tbp(fileContent);
+				if (outputFormat.equals(MEIExport.MEI_EXT)) {
+					Encoding e = new Encoding(
+						tbp, inputName, Stage.RULES_CHECKED
+					);
+					// Make transParams, containing only those params that MEIExport needs
+					// TODO make global and remove also from saveAsLike()
+					Map<String, String> transParams = new LinkedHashMap<String, String>();
+					transParams.put(CLInterface.TUNING, CLInterface.INPUT);
+					transParams.put(CLInterface.TABLATURE, "y");
+					transParams.put(CLInterface.TYPE, CLInterface.INPUT);
+					String mei = MEIExport.exportMEIFile(
+						null, new Tablature(e, false), null, false, false, argPaths,
+						transParams, new String[]{null, "abtab -- converter"}
+					);
+					System.out.println(cp + destination);
+					ToolBox.storeTextFile(mei, new File(cp + destination));
+				};
+			}
 		}
 	}
 
@@ -551,7 +597,7 @@ public class Editor extends JFrame{
 	 * </ul>
 	 */
 	private void openFileAction() {
-		openLike("Open", TBP + " (" + Encoding.EXTENSION + ")", Encoding.EXTENSION, null);
+		openLike("Open", TBP + " (" + Encoding.TBP_EXT + ")", Encoding.TBP_EXT, null);
 	}
 
 
@@ -597,7 +643,7 @@ public class Editor extends JFrame{
 			// Set file, importFile, and title
 			setFile(importType == null ? f : null);
 			setImportFile(importType == null ? null : f);
-			setTitle(FilenameUtils.removeExtension(f.getName()) + Encoding.EXTENSION + TITLE[2]);
+			setTitle(FilenameUtils.removeExtension(f.getName()) + Encoding.TBP_EXT + TITLE[2]);
 		}
 	}
 
@@ -617,8 +663,8 @@ public class Editor extends JFrame{
 
 
 	private void saveAsFileAction() {
-		String extStr = EXTENSIONS.get(Encoding.EXTENSION);
-		saveAsLike("Save as", extStr + " (" + Encoding.EXTENSION + ")", Encoding.EXTENSION, null);
+		String extStr = EXTENSIONS.get(Encoding.TBP_EXT);
+		saveAsLike("Save as", extStr + " (" + Encoding.TBP_EXT + ")", Encoding.TBP_EXT, null);
 	}
 
 

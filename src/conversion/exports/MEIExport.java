@@ -48,7 +48,7 @@ public class MEIExport {
 	public static final String TAB = "    ";
 
 	public static final String MEI_EXT = ".mei";
-	public static final String MEI_EXT_ALT = ".xml";
+	public static final String XML_EXT = ".xml";
 	
 	public static final List<String> MEI_HEAD = Arrays.asList("title");
 	public static final List<String> STRINGS = Arrays.asList(
@@ -98,11 +98,11 @@ public class MEIExport {
 		
 		Tablature testTab = new Tablature(new File(
 			"F:/research/data/annotated/encodings/thesis-int/" + testTabFile + 
-			Encoding.EXTENSION));
+			Encoding.TBP_EXT));
 		
 		testTab = new Tablature(new File(
 			"C:/Users/Reinier/Desktop/test-capirola/tab/capirola-1520-et_in_terra_pax" + 
-			Encoding.EXTENSION));
+			Encoding.TBP_EXT));
 		
 //		exportTabMEIFile(testTab, "C:/Users/Reinier/Desktop/test-capirola/capirola-1520-et_in_terra_pax" + "-tab");	
 //		System.exit(0);
@@ -146,7 +146,7 @@ public class MEIExport {
 			new Tablature(new File("F:/research/data/annotated/encodings/thesis-int/" + 
 			"3vv/judenkuenig-1523_2-elslein_liebes" + 
 //			"4vv/rotta-1546_15-bramo_morir" +
-			Encoding.EXTENSION), true);
+			Encoding.TBP_EXT), true);
 //		tab = null;
 		
 //		List<List<String[]>> data = getData(t);
@@ -222,7 +222,8 @@ public class MEIExport {
 	//  C L A S S  M E T H O D S
 	//
 	/**
-	 * Exports the given Transcription as an MEI file, saved at the given path.
+	 * Exports the given Transcription or Tablature as an MEI file. If a save path is provided,
+	 * the file is saved at the given path; else, its contents are returned as a String.
 	 * 
 	 * @param trans Must be a Transcription created setting the encodingFile argument to null
 	 *              (i.e., one that has basicNoteProperties).
@@ -232,6 +233,8 @@ public class MEIExport {
 	 * @param tabOnTop
 	 * @param paths
 	 * @param dict
+	 * 
+	 * @return
 	 */
 	public static String exportMEIFile(Transcription trans, Tablature tab, List<List<Integer>> mismatchInds, 
 		boolean grandStaff, boolean tabOnTop, Map<String, String> paths, Map<String, String> cliOptsVals, 

@@ -34,7 +34,7 @@ import tools.ToolBox;
 
 public class MIDIImport {
 	
-	public static final String EXTENSION = ".mid";
+	public static final String MID_EXT = ".mid";
 
 	public static void main(String[] args) {
 		
@@ -53,7 +53,7 @@ public class MIDIImport {
 			});
 		
 		for (String s : pieces) {
-			String piece = s + EXTENSION;
+			String piece = s + MID_EXT;
 			File curr = new File("F:/research/data/annotated/MIDI/bach-WTC/thesis/5vv/" + piece);
 			File gith = new File("I:/removed_from_research-software-github/data-old/ISMIR-2018/" + piece);
 		
@@ -145,7 +145,7 @@ public class MIDIImport {
 	public static Piece importMidiFile(File f) {
 		String fileName = f.getName();
 		URL url;
-		if (!fileName.endsWith(EXTENSION)) {
+		if (!fileName.endsWith(MID_EXT)) {
 			throw new RuntimeException("ERROR: the file is not a MIDI file.");
 		}
 		try {
@@ -336,7 +336,7 @@ public class MIDIImport {
 		if (f.isDirectory()) {
 			String[] fileNames = f.list();
 			for (String s : fileNames) {
-				if (s.endsWith(EXTENSION)) {
+				if (s.endsWith(MID_EXT)) {
 					midiFileNames.add(s);  
 				}
 			}
@@ -350,7 +350,7 @@ public class MIDIImport {
 		// If f is not a directory, i.e., a MIDI file 
 		else {
 			String s = f.getName();
-			if (s.endsWith(EXTENSION)) {
+			if (s.endsWith(MID_EXT)) {
 				midiFileNames.add(s);  
 			}
 		}
@@ -374,7 +374,7 @@ public class MIDIImport {
 			staff.add(notationVoice);
 			
 			// c. Create a Piece from the MIDI file. The Piece is a single part
-			if (!midiFileName.endsWith(EXTENSION)) {
+			if (!midiFileName.endsWith(MID_EXT)) {
 				continue;
 			}
 			try {
@@ -451,7 +451,7 @@ public class MIDIImport {
 		// Make a list that contains only the MIDI file names in fileNames
 		List<String> midiFileNames = new ArrayList<String>();
 		for (String s : fileNames) {
-			if (s.endsWith(EXTENSION)) {
+			if (s.endsWith(MID_EXT)) {
 				midiFileNames.add(s);  
 			}
 		}
@@ -464,7 +464,7 @@ public class MIDIImport {
 
 		URL url;
 		for (String midiFileName : midiFileNames) {
-			if (!midiFileName.endsWith(EXTENSION)) {
+			if (!midiFileName.endsWith(MID_EXT)) {
 				continue;
 			}
 			try {

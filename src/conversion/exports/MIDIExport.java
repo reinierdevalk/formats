@@ -50,7 +50,7 @@ public class MIDIExport {
 		String piece = "newsidler-1544_2-nun_volget";
 		
 		Transcription t = new Transcription(
-			new File(path + piece + MIDIImport.EXTENSION)
+			new File(path + piece + MIDIImport.MID_EXT)
 //			, new File("F:/research/data/encodings/intabulations/3vv/" + piece + Encoding.EXTENSION)
 		);
 		ToolBox.storeObjectBinary(t, new File(path + piece + ".ser"));
