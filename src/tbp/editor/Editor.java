@@ -118,22 +118,28 @@ public class Editor extends JFrame{
 	// try-catch block is only needed when reading from a File using a BufferedReader
 	public static void main(String[] args) {
 		boolean dev = args.length == 0 ? true : args[0].equals(String.valueOf(true));
-		String source = args[1];
-		String destination = args[2];
+		String source = args[4];
+		String destination = args[5];
 		Map<String, String> argPaths = CLInterface.getPaths(dev);
+		
+		System.out.println(args[0]);
+		System.out.println(args[1]);
+		System.out.println(args[2]);
+		System.out.println(args[3]);
+		System.out.println(args[4]);
+		System.out.println(args[5]);
 
-		// Parse (fictional) CLI args and set variables
-		String[] opts = new String[]{CLInterface.TUNING, CLInterface.TABLATURE, CLInterface.TYPE};
-		String[] defaultVals = new String[]{CLInterface.INPUT, "y", CLInterface.INPUT};
-		String[] userOptsVals = new String[]{};
-
-		List<Object> parsed = CLInterface.parseCLIArgs(
-			opts, defaultVals, userOptsVals, null
-		);
+		// Parse CLI args and set variables
+//		String[] opts = args[1].split(" ");
+//		String[] defaultVals = args[2].split(" ");
+//		String[] userOptsVals = !args[3].equals("") ? args[3].split(",") : new String[]{};
+		List<Object> parsed = CLInterface.parseCLIArgs(args, null);
 		Map<String, String> cliOptsVals = (Map<String, String>) parsed.get(0);
 
 		transParams = CLInterface.getTranscriptionParams(cliOptsVals);
-
+		System.out.println(transParams);
+		System.exit(0);
+		
 		// No source and destination provided: convert through editor
 		if (source.equals("") && destination.equals("")) {
 			new Editor(argPaths);
