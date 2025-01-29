@@ -106,6 +106,7 @@ public class Editor extends JFrame{
 	private Map<String, String> paths;
 	private File file; // .tbp
 	private File importFile; // .tab or .tc
+	private static Map<String, String> transParams;
 
 
 	// https://www.youtube.com/watch?v=Z8p_BtqPk78
@@ -121,23 +122,32 @@ public class Editor extends JFrame{
 		String destination = args[2];
 		Map<String, String> argPaths = CLInterface.getPaths(dev);
 
+		// Parse (fictional) CLI args and set variables
+		String[] opts = new String[]{CLInterface.TUNING, CLInterface.TABLATURE, CLInterface.TYPE};
+		String[] defaultVals = new String[]{CLInterface.INPUT, "y", CLInterface.INPUT};
+		String[] userOptsVals = new String[]{};
+
+		List<Object> parsed = CLInterface.parseCLIArgs(
+			opts, defaultVals, userOptsVals, null
+		);
+		Map<String, String> cliOptsVals = (Map<String, String>) parsed.get(0);
+
+		transParams = CLInterface.getTranscriptionParams(cliOptsVals);
+
 		// No source and destination provided: convert through editor
 		if (source.equals("") && destination.equals("")) {
 			new Editor(argPaths);
 		}
-		// Convert directly
+		// Else: convert directly
 		else {
 			String cp = argPaths.get("CONVERTER_PATH");
 			String inputName = ToolBox.splitExt(source)[0];
 			String inputFormat = ToolBox.splitExt(source)[1];
 			String outputName = ToolBox.splitExt(destination)[0];
 			String outputFormat = ToolBox.splitExt(destination)[1];
-			
-			System.out.println(inputFormat.equals(TabImport.TC_EXT));
-			System.out.println(outputFormat.equals(MEIExport.MEI_EXT));
-			
-			String fileContent = ToolBox.readTextFile(new File(cp + source));
-			
+
+			String tbp = TabImport.tc2tbp(ToolBox.readTextFile(new File(cp + source)));
+
 			// MEI
 			if (inputFormat.equals(MEIExport.MEI_EXT) || inputFormat.equals(MEIExport.XML_EXT)) {
 				
@@ -152,22 +162,14 @@ public class Editor extends JFrame{
 			}
 			// TabCode
 			if (inputFormat.equals(TabImport.TC_EXT)) {
-				String tbp = TabImport.tc2tbp(fileContent);
 				if (outputFormat.equals(MEIExport.MEI_EXT)) {
 					Encoding e = new Encoding(
-						tbp, inputName, Stage.RULES_CHECKED
+						tbp, outputName, Stage.RULES_CHECKED
 					);
-					// Make transParams, containing only those params that MEIExport needs
-					// TODO make global and remove also from saveAsLike()
-					Map<String, String> transParams = new LinkedHashMap<String, String>();
-					transParams.put(CLInterface.TUNING, CLInterface.INPUT);
-					transParams.put(CLInterface.TABLATURE, "y");
-					transParams.put(CLInterface.TYPE, CLInterface.INPUT);
 					String mei = MEIExport.exportMEIFile(
 						null, new Tablature(e, false), null, false, false, argPaths,
 						transParams, new String[]{null, "abtab -- converter"}
 					);
-					System.out.println(cp + destination);
 					ToolBox.storeTextFile(mei, new File(cp + destination));
 				};
 			}
@@ -232,7 +234,7 @@ public class Editor extends JFrame{
 	}
 
 
-	private JTextArea makeJTextArea(String content, Highlighter hl, Rectangle bounds) {
+	private JTextArea makeJTextArea(String contents, Highlighter hl, Rectangle bounds) {
 		JTextArea ta = new JTextArea();
 		// If there is a JScrollPane, the JTextArea's bounds are overridden by the JScrollPane's 
 		if (bounds != null) {
@@ -241,7 +243,7 @@ public class Editor extends JFrame{
 		ta.setLineWrap(true); // necessary because of JScrollPane
 		ta.setEditable(true);
 		ta.setFont(FONT);
-		ta.setText(content);
+		ta.setText(contents);
 		ta.setHighlighter(hl);
 		return ta;
 	}
@@ -576,7 +578,7 @@ public class Editor extends JFrame{
 		StringBuilder sb = new StringBuilder();
 		Arrays.stream(Encoding.METADATA_TAGS).forEach(t -> 
 			sb.append(Encoding.OPEN_METADATA_BRACKET + t + ":" + Encoding.CLOSE_METADATA_BRACKET + "\n"));
-		// Set JTextAreas content
+		// Set JTextAreas contents
 		populateTextArea(sb.toString() + Symbol.END_BREAK_INDICATOR, getEncodingTextArea());
 		populateTextArea("", getTabTextArea());
 		// Set file, importFile, and title
@@ -611,7 +613,7 @@ public class Editor extends JFrame{
 		// If dialog is confirmed
 		if (fc.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
 			File f = fc.getSelectedFile();
-			// Get content of f
+			// Get contents of f
 			StringBuilder sb = new StringBuilder();
 			try (BufferedReader br = new BufferedReader(new FileReader(f))) {
 				String line;
@@ -621,24 +623,24 @@ public class Editor extends JFrame{
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
-			String fileContent = sb.toString();
-			// Make content to set in encodingTextArea
-			String content = null; 
+			String fileContents = sb.toString();
+			// Make contents to set in encodingTextArea
+			String contents = null; 
 			// Open case
 			if (importType == null) {
-				content = fileContent;
+				contents = fileContents;
 			}
 			// Import case
 			else {
 				if (importType.equals(ASCII)) {
-					content = TabImport.ascii2tbp(fileContent);
+					contents = TabImport.ascii2tbp(fileContents);
 				}
 				else if (importType.equals(TC)) {
-					content = TabImport.tc2tbp(fileContent);
+					contents = TabImport.tc2tbp(fileContents);
 				}
 			}
-			// Set JTextAreas content
-			populateTextArea(handleReturns(content), getEncodingTextArea());
+			// Set JTextAreas contents
+			populateTextArea(handleReturns(contents), getEncodingTextArea());
 			populateTextArea("", getTabTextArea());
 			// Set file, importFile, and title
 			setFile(importType == null ? f : null);
@@ -700,46 +702,41 @@ public class Editor extends JFrame{
 			// If dialog is confirmed
 			if (fc.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
 				File f = fc.getSelectedFile();
-				// Get content of encodingTextArea
+				// Get contents of encodingTextArea
 				// NB: returns entered directly in encodingTextArea are \n, but are saved as \r\n (applies to 
-				// Save as-case only); returns in file content opened into encodingTextArea are always \r\n
-				String etaContent = handleReturns(getEncodingTextArea().getText()); 
-				// Make content to save as/export
-				String content = null;
+				// Save as-case only); returns in file contents opened into encodingTextArea are always \r\n
+				String etaContents = handleReturns(getEncodingTextArea().getText()); 
+				// Make contents to save as/export
+				String contents = null;
 				// Save as-case
 				if (exportType == null) {
 					if (opf == null) {
 						setFile(f);
 						setTitle(f.getName() + TITLE[2]);
 					}
-					content = etaContent;
+					contents = etaContents;
 				}
 				// Export case
 				else {
 					String fname = ToolBox.splitExt(f.getName())[0];
 					Encoding e = new Encoding(
-						etaContent, fname, Stage.RULES_CHECKED
+						etaContents, fname, Stage.RULES_CHECKED
 					);
 //					Encoding e = new Encoding(
-//						etaContent, FilenameUtils.getBaseName(getFile().getName()), Stage.RULES_CHECKED
+//						etaContents, FilenameUtils.getBaseName(getFile().getName()), Stage.RULES_CHECKED
 //					);
 					if (exportType.equals(ASCII)) {
-						content = makeASCIITab(e);
+						contents = makeASCIITab(e);
 					}
 					else if (exportType.equals(MEI)) {
-						// Make transParams, containing only those params that MEIExport needs
-						Map<String, String> transParams = new LinkedHashMap<String, String>();
-						transParams.put(CLInterface.TUNING, CLInterface.INPUT);
-						transParams.put(CLInterface.TABLATURE, "y");
-						transParams.put(CLInterface.TYPE, CLInterface.INPUT);
-						content = MEIExport.exportMEIFile(
+						contents = MEIExport.exportMEIFile(
 							null, new Tablature(e, false), null, false, false, getPaths(),
 							transParams, new String[]{null, "abtab -- converter"}
 						);
 					}
 				}
 				// Save as/export
-				ToolBox.storeTextFile(content, f);
+				ToolBox.storeTextFile(contents, f);
 			}
 		}		
 	}
@@ -791,8 +788,8 @@ public class Editor extends JFrame{
 	//  I N S T A N C E  M E T H O D S
 	//  other
 	//
-	private void populateTextArea(String content, JTextArea ta) { 
-		ta.setText(content);
+	private void populateTextArea(String contents, JTextArea ta) { 
+		ta.setText(contents);
 		ta.setCaretPosition(0);
 	}
 
