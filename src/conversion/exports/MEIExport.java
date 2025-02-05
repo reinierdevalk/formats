@@ -469,6 +469,7 @@ public class MEIExport {
 		TabSymbolSet tss = null;
 		List<String[]> tabMensSigns = null;
 		Integer[] slsTab = null;
+		int tabLines = 6;
 		if (ONLY_TAB || TAB_AND_TRANS) {
 			// tuning
 			tuning = Tuning.getTuning(transParams.get(CLInterface.TUNING));
@@ -514,6 +515,10 @@ public class MEIExport {
 				true, Arrays.asList(ONLY_TAB, TAB_AND_TRANS), TAB_ON_TOP, 
 				GRAND_STAFF, numVoices, -1
 			);
+			
+			if (tss.getShortType().equals("GLT")) {
+				tabLines = tab.getLargestTablatureChord();
+			}
 		}
 
 		List<Integer[]> slsTrans = null;
@@ -605,7 +610,7 @@ public class MEIExport {
 						new String[][]{
 							{"xml:id", addUniqueID("sd", xmlIDs).get(xmlIDs.size() - 1)},
 							{"n", String.valueOf(slsTab[0])},
-							{"lines", "6"},
+							{"lines", String.valueOf(tabLines)},
 							{"notationtype", "tab.lute." + tss.getType().toLowerCase()},
 							{"tab.dur.sym.ratio", "1"} // TODO remove?
 						}
