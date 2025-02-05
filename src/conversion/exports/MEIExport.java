@@ -175,8 +175,8 @@ public class MEIExport {
 		
 		Map<String, String> paths = null;
 		exportMEIFile(trans, tab, /*tab.getBasicTabSymbolProperties(), trans.getKeyInfo(), 
-			tab.getTripletOnsetPairs(),*/ mismatchInds, grandStaff, tabOnTop, paths, 
-			/*alignWithMetricBarring,*/ null, new String[]{s, ""});
+			tab.getTripletOnsetPairs(),*/ mismatchInds, paths, 
+			null, new String[]{s, ""});
 //		System.out.println(ToolBox.readTextFile(new File(s)));
 
 //		String scoreType = grandStaff ? "grand_staff" : "score";
@@ -238,7 +238,7 @@ public class MEIExport {
 	 * @return
 	 */
 	public static String exportMEIFile(Transcription trans, Tablature tab, List<List<Integer>> mismatchInds, 
-		boolean grandStaff, boolean tabOnTop, Map<String, String> paths, Map<String, String> transParams, 
+		/*boolean grandStaff, boolean tabOnTop,*/ Map<String, String> transParams, Map<String, String> paths,  
 		String[] dict) {
 //		System.out.println("\r\n>>> MEIExport.exportMEIFile() called");
 
@@ -265,9 +265,14 @@ public class MEIExport {
 			(tab == null && trans != null) // there is no tab
 			||
 			((tab != null && !includeTab) && trans != null); // there is a tab but it is not included
-		TAB_ON_TOP = tabOnTop; // TODO make transParams option; in DEV case, set to true
-		GRAND_STAFF = grandStaff; // TODO make transParams option; in DEV case, set to true
-
+	
+		if (TAB_AND_TRANS) {
+			TAB_ON_TOP = transParams.get(CLInterface.PLACEMENT).equals("t");
+		}
+		if (TAB_AND_TRANS || ONLY_TRANS) {
+			GRAND_STAFF = transParams.get(CLInterface.STAFF).equals("d"); // TODO change GRAND_STAFF or !GRAND_STAFF into d, v, s
+		}
+			
 		List<Integer[]> mi = 
 			ONLY_TAB || TAB_AND_TRANS ? tab.getMeterInfoAgnostic() : trans.getMeterInfo();
 
@@ -282,6 +287,9 @@ public class MEIExport {
 			// Adapt bars in ki to tablature bars (the barring in ki is equal to that 
 			// in trans.getMeterInfo()
 			if (TAB_AND_TRANS) {
+				for (Integer[] in : ki) {
+					System.out.println(Arrays.asList(in));
+				}
 				ki = rebarKeyInfo(tab, ki);
 			}
 
@@ -408,7 +416,7 @@ public class MEIExport {
 		// 3. Save
 		if (path != null) { 
 			ToolBox.storeTextFile(
-				mei, new File(path + "-" + (GRAND_STAFF ? "grand_staff" : "score") + MEI_EXT)
+				mei, new File(path + /*"-" + (GRAND_STAFF ? "grand_staff" : "score") +*/ MEI_EXT)
 			);
 			return null;
 		}
@@ -463,38 +471,41 @@ public class MEIExport {
 		Integer[] slsTab = null;
 		if (ONLY_TAB || TAB_AND_TRANS) {
 			// tuning
-			if (transParams == null) {
-				tuning = tab.getTunings()[0];
-			}
-			else {
-				String argsTuning = transParams.get(CLInterface.TUNING);
-				if (argsTuning.equals(CLInterface.INPUT)) {
-					// Tuning is always provided in input .tbp file (required)
-					tuning = tab.getTunings()[0];					
-				}
-				else {
-					tuning = Tuning.getTuning(argsTuning);
-				}
-			}
+			tuning = Tuning.getTuning(transParams.get(CLInterface.TUNING));
+//			if (transParams == null) {
+//				tuning = tab.getTunings()[0];
+//			}
+//			else {
+//				String argsTuning = transParams.get(CLInterface.TUNING);
+//				if (argsTuning.equals(CLInterface.INPUT)) {
+//					// Tuning is always provided in input .tbp file (required)
+//					tuning = tab.getTunings()[0];
+//				}
+//				else {
+//					tuning = Tuning.getTuning(argsTuning);
+//				}
+//			}
+
 			// tss (type)
-			if (transParams == null) {
-				tss = tab.getEncoding().getTabSymbolSet();
-			}
-			else {
-				String argsType = transParams.get(CLInterface.TYPE);
-				if (argsType.equals(CLInterface.INPUT)) {
-					// Type is always provided in input .tbp file (required)
-					tss = tab.getEncoding().getTabSymbolSet();
-				}
-				else {
-					tss = TabSymbolSet.getTabSymbolSet(null, argsType);
-				}
+			tss = TabSymbolSet.getTabSymbolSet(null, transParams.get(CLInterface.TYPE));
+//			if (transParams == null) {
+//				tss = tab.getEncoding().getTabSymbolSet();
+//			}
+//			else {
+//				String argsType = transParams.get(CLInterface.TYPE);
+//				if (argsType.equals(CLInterface.INPUT)) {
+//					// Type is always provided in input .tbp file (required)
+//					tss = tab.getEncoding().getTabSymbolSet();
+//				}
+//				else {
+//					tss = TabSymbolSet.getTabSymbolSet(null, argsType);
+//				}
 				
 //				tss = Arrays.stream(TabSymbolSet.values())
 //					.filter(t -> t.getShortType().equals(argsType))
 //					.findFirst()
 //					.orElse(null);
-			}
+//			}
 
 			// NB: tabMensSigns aligns with mi, i.e., each of its elements corresponds to
 			// an element with the same bar and metric time in mi (but not vice versa)
@@ -590,19 +601,12 @@ public class MEIExport {
 				// 1. Make staffDefTab, containing <tuning> and <meterSig> (both optional)
 				List<String> staffDefTab = new ArrayList<>();
 				if (ONLY_TAB || TAB_AND_TRANS) {
-					// TODO change to "tab.lute" + tss.getName().toLowerCase() when GLT MEI is available
-					String notationtypeStr = "tab.lute.";
-					notationtypeStr += 
-						(tss != TabSymbolSet.FRENCH && tss != TabSymbolSet.ITALIAN && 
-						tss != TabSymbolSet.SPANISH) ? "french" : 
-						tss.getName().toLowerCase();
-
 					staffDefTab.add(makeOpeningTag("staffDef", false,
 						new String[][]{
 							{"xml:id", addUniqueID("sd", xmlIDs).get(xmlIDs.size() - 1)},
 							{"n", String.valueOf(slsTab[0])},
 							{"lines", "6"},
-							{"notationtype", notationtypeStr},
+							{"notationtype", "tab.lute." + tss.getType().toLowerCase()},
 							{"tab.dur.sym.ratio", "1"} // TODO remove?
 						}
 					));

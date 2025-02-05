@@ -47,6 +47,7 @@ import org.apache.commons.io.FilenameUtils;
 
 import conversion.exports.MEIExport;
 import external.Tablature;
+import external.Tablature.Tuning;
 import interfaces.CLInterface;
 import conversion.imports.TabImport;
 import internal.core.Encoding;
@@ -106,7 +107,7 @@ public class Editor extends JFrame{
 	private Map<String, String> paths;
 	private File file; // .tbp
 	private File importFile; // .tab or .tc
-	private static Map<String, String> transParams;
+	private static Map<String, String> cliOptsVals;
 
 
 	// https://www.youtube.com/watch?v=Z8p_BtqPk78
@@ -121,25 +122,11 @@ public class Editor extends JFrame{
 		String source = args[4];
 		String destination = args[5];
 		Map<String, String> argPaths = CLInterface.getPaths(dev);
-		
-		System.out.println(args[0]);
-		System.out.println(args[1]);
-		System.out.println(args[2]);
-		System.out.println(args[3]);
-		System.out.println(args[4]);
-		System.out.println(args[5]);
 
 		// Parse CLI args and set variables
-//		String[] opts = args[1].split(" ");
-//		String[] defaultVals = args[2].split(" ");
-//		String[] userOptsVals = !args[3].equals("") ? args[3].split(",") : new String[]{};
 		List<Object> parsed = CLInterface.parseCLIArgs(args, null);
-		Map<String, String> cliOptsVals = (Map<String, String>) parsed.get(0);
+		cliOptsVals = (Map<String, String>) parsed.get(0);
 
-		transParams = CLInterface.getTranscriptionParams(cliOptsVals);
-		System.out.println(transParams);
-		System.exit(0);
-		
 		// No source and destination provided: convert through editor
 		if (source.equals("") && destination.equals("")) {
 			new Editor(argPaths);
@@ -172,9 +159,11 @@ public class Editor extends JFrame{
 					Encoding e = new Encoding(
 						tbp, outputName, Stage.RULES_CHECKED
 					);
+					Tablature tab = new Tablature(e, false);
+					cliOptsVals = CLInterface.setPieceSpecificTransParams(cliOptsVals, tab, "converter");
 					String mei = MEIExport.exportMEIFile(
-						null, new Tablature(e, false), null, false, false, argPaths,
-						transParams, new String[]{null, "abtab -- converter"}
+						null, new Tablature(e, false), null, CLInterface.getTranscriptionParams(cliOptsVals), 
+						argPaths, new String[]{null, "abtab -- converter"}
 					);
 					ToolBox.storeTextFile(mei, new File(cp + destination));
 				};
@@ -735,9 +724,11 @@ public class Editor extends JFrame{
 						contents = makeASCIITab(e);
 					}
 					else if (exportType.equals(MEI)) {
+						Tablature tab = new Tablature(e, false);
+						cliOptsVals = CLInterface.setPieceSpecificTransParams(cliOptsVals, tab, "converter");
 						contents = MEIExport.exportMEIFile(
-							null, new Tablature(e, false), null, false, false, getPaths(),
-							transParams, new String[]{null, "abtab -- converter"}
+							null, tab, null, CLInterface.getTranscriptionParams(cliOptsVals), 
+							getPaths(), new String[]{null, "abtab -- converter"} 
 						);
 					}
 				}
