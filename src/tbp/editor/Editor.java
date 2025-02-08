@@ -126,6 +126,7 @@ public class Editor extends JFrame{
 		// Parse CLI args and set variables
 		List<Object> parsed = CLInterface.parseCLIArgs(args, null);
 		cliOptsVals = (Map<String, String>) parsed.get(0);
+		System.exit(0);
 
 		// No source and destination provided: convert through editor
 		if (source.equals("") && destination.equals("")) {

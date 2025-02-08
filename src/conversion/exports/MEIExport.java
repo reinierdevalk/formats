@@ -473,35 +473,9 @@ public class MEIExport {
 		if (ONLY_TAB || TAB_AND_TRANS) {
 			// tuning
 			tuning = Tuning.getTuning(transParams.get(CLInterface.TUNING));
-//			if (transParams == null) {
-//				tuning = tab.getTunings()[0];
-//			}
-//			else {
-//				String argsTuning = transParams.get(CLInterface.TUNING);
-//				if (argsTuning.equals(CLInterface.INPUT)) {
-//					// Tuning is always provided in input .tbp file (required)
-//					tuning = tab.getTunings()[0];
-//				}
-//				else {
-//					tuning = Tuning.getTuning(argsTuning);
-//				}
-//			}
 
 			// tss (type)
-			tss = TabSymbolSet.getTabSymbolSet(null, transParams.get(CLInterface.TYPE));
-//			if (transParams == null) {
-//				tss = tab.getEncoding().getTabSymbolSet();
-//			}
-//			else {
-//				String argsType = transParams.get(CLInterface.TYPE);
-//				if (argsType.equals(CLInterface.INPUT)) {
-//					// Type is always provided in input .tbp file (required)
-//					tss = tab.getEncoding().getTabSymbolSet();
-//				}
-//				else {
-//					tss = TabSymbolSet.getTabSymbolSet(null, argsType);
-//				}
-				
+			tss = TabSymbolSet.getTabSymbolSet(null, transParams.get(CLInterface.TYPE));				
 //				tss = Arrays.stream(TabSymbolSet.values())
 //					.filter(t -> t.getShortType().equals(argsType))
 //					.findFirst()
