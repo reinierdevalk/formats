@@ -287,9 +287,6 @@ public class MEIExport {
 			// Adapt bars in ki to tablature bars (the barring in ki is equal to that 
 			// in trans.getMeterInfo()
 			if (TAB_AND_TRANS) {
-				for (Integer[] in : ki) {
-					System.out.println(Arrays.asList(in));
-				}
 				ki = rebarKeyInfo(tab, ki);
 			}
 
@@ -1467,10 +1464,6 @@ public class MEIExport {
 				pitch, currKi[Transcription.KI_KEY], grids, accidsInEffect
 			);
 			String[] pa = (String[]) pitchSpell.get(0);
-			System.out.println("pname = " + pa[0]);
-			System.out.println("accid = " + pa[1]);
-			System.out.println("acges = " +pa[2]);
-			System.out.println("- - - - - - - - -");
 
 			List<List<Integer>> aie = (List<List<Integer>>) pitchSpell.get(1);
 			doubleFlatsInEffect = aie.get(0);
