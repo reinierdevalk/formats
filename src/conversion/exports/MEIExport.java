@@ -238,8 +238,7 @@ public class MEIExport {
 	 * @return
 	 */
 	public static String exportMEIFile(Transcription trans, Tablature tab, List<List<Integer>> mismatchInds, 
-		/*boolean grandStaff, boolean tabOnTop,*/ Map<String, String> transParams, Map<String, String> paths,  
-		String[] dict) {
+		Map<String, String> transParams, Map<String, String> paths, String[] dict) {
 //		System.out.println("\r\n>>> MEIExport.exportMEIFile() called");
 
 //		if (transParams != null) {
@@ -253,7 +252,7 @@ public class MEIExport {
 		String INDENT_ONE = INDENT_SCORE + TAB; // for the main <scoreDef> and all <section>s
 		String INDENT_TWO = INDENT_SCORE + TAB.repeat(2); // for the first child of each <section>
 
-		String tp = CLInterface.getPathString(Arrays.asList(paths.get("TEMPLATES_PATH")));
+		String tp = StringTools.getPathString(Arrays.asList(paths.get("TEMPLATES_PATH")));
 		String mei = ToolBox.readTextFile(new File(tp + paths.get("MEI_TEMPLATE")));
 		String path = dict[0];
 
@@ -306,7 +305,9 @@ public class MEIExport {
 		mei = mei.replace("date_placeholder", new SimpleDateFormat("yyyy-MM-dd").format(new Date()));
 		String version = "1.0.0"; // TODO
 		mei = mei.replace("version_placeholder", version);
-		mei = mei.replace("app_placeholder", dict[1]);
+		mei = mei.replace("input_file_placeholder", "Input file: " + dict[1]);
+		mei = mei.replace("tool_placeholder", dict[2]);
+		
 
 		// 2. Make the <music> and replace in template. The <music> consists of the <score>, 
 		// containing one or more <section>s. Each <section> consists of a <scoreDef> followed 
@@ -413,7 +414,7 @@ public class MEIExport {
 		// 3. Save
 		if (path != null) { 
 			ToolBox.storeTextFile(
-				mei, new File(path + /*"-" + (GRAND_STAFF ? "grand_staff" : "score") +*/ MEI_EXT)
+				mei, new File(path /*+ "-" + (GRAND_STAFF ? "grand_staff" : "score") + MEI_EXT*/)
 			);
 			return null;
 		}
@@ -2231,7 +2232,7 @@ public class MEIExport {
 		}
 		// Store unbeamed as text file // TODO find cleaner solution
 		// NB: the stored file ends with a line break
-		String psp = CLInterface.getPathString(Arrays.asList(paths.get("UTILS_PYTHON_PATH")));
+		String psp = StringTools.getPathString(Arrays.asList(paths.get("UTILS_PYTHON_PATH")));
 //		String psp = getPythonPath();
 		String fName = psp + "unbeamed.txt";
 		File f = new File(fName);
@@ -3116,7 +3117,7 @@ public class MEIExport {
 		res = res.replace("date_placeholder", new SimpleDateFormat("yyyy-MM-dd").format(new Date()));
 		String version = "1.0.0";
 		res = res.replace("version_placeholder", version);
-		res = res.replace("app_placeholder", app);
+		res = res.replace("tool_placeholder", app);
 
 		// Make the <music> 
 		// 1. Make the <scoreDef>s as strings (one for each section) 

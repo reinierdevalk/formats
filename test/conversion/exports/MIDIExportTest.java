@@ -14,6 +14,7 @@ import org.junit.Test;
 
 import external.Transcription;
 import interfaces.CLInterface;
+import tools.text.StringTools;
 
 public class MIDIExportTest {
 
@@ -28,7 +29,7 @@ public class MIDIExportTest {
 		String mp = paths.get("MIDI_PATH");
 		String td = "test/5vv/";
 
-		midiTestGetMeterInfo = new File(CLInterface.getPathString(
+		midiTestGetMeterInfo = new File(StringTools.getPathString(
 			Arrays.asList(mp, td)) + "test_get_meter_key_info.mid"
 		);
 //		midiTestGetMeterInfoDiminuted = new File(MEIExport.rootDir + "data/annotated/MIDI/test/" + "test_get_meter_key_info_diminuted.mid");

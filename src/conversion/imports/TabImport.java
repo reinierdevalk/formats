@@ -4,9 +4,11 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -16,6 +18,7 @@ import org.apache.commons.lang3.StringUtils;
 import conversion.exports.MEIExport;
 import external.Tablature;
 import external.Tablature.Tuning;
+import interfaces.CLInterface;
 import internal.core.Encoding;
 import internal.core.Encoding.Stage;
 import tbp.symbols.ConstantMusicalSymbol;
@@ -250,6 +253,35 @@ public class TabImport {
 
 
 	/**
+	 * Converts the encoding in the given file to <code>.tbp</code>.
+	 *  
+	 * @param path
+	 * @param file
+	 * @return
+	 */
+	public static String convertToTbp(String path, String file) {
+		Map<String, Function<Object[], String>> map = new HashMap<>();
+		map.put(TAB_EXT, params -> ascii2tbp((String) params[0]));
+		map.put(TC_EXT, params -> tc2tbp((String) params[0]));
+		map.put(Encoding.TBP_EXT, params -> (String) params[0]);
+		map.put(MEIExport.MEI_EXT, params -> mei2tbp((String) params[0]));
+		map.put(MEIExport.XML_EXT, params -> mei2tbp((String) params[0]));
+
+		String ext = ToolBox.splitExt(file)[1];
+		for (String sourceFormat : CLInterface.ALLOWED_FILE_FORMATS) {
+			if (sourceFormat.equals(ext)) {
+				Function<Object[], String> func = map.get(sourceFormat);
+				if (func != null) {
+					return func.apply(new Object[]{ToolBox.readTextFile(new File(path + file))});
+				}
+			}
+		}
+
+		return null;
+	}
+
+
+	/**
 	 * Creates a tab+ encoding from the given TabCode encoding.
 	 * 
 	 * @param tc
@@ -348,6 +380,43 @@ public class TabImport {
 		
 //		StringBuffer metadataStr = new StringBuffer(Encoding.createMetadata(metadata));
 		return metadataStr.append(tbpEncoding).toString();
+	}
+
+
+	/**
+	 * Creates a tab+ encoding from the given Sibelius ASCII file.
+	 * 
+	 * @param ascii
+	 * @return
+	 */
+	public static String ascii2tbp(String ascii) {
+		// Make encoding
+		List<List<String>> systemContents = getSystemContents(getSystems(ascii));
+//		systemContents.get(0).forEach(s -> System.out.println(s));
+		StringBuffer enc = getEncoding(systemContents);
+
+		// Make metadataString
+		String tss = systemContents.get(systemContents.size()-1).get(0);
+		String tuning = systemContents.get(systemContents.size()-1).get(1);
+		String[] metadata = new String[]{
+			"", // author TODO
+			"", // title TODO
+			"", // source TODO
+			tss, // TabSymbolSet  
+			tuning, // Tuning
+			createMeterInfoString(enc.toString(), tss), // meterinfo 
+			"" // diminution
+		};
+
+		StringBuffer metadataStr = 
+			new StringBuffer(createMetaData(metadata, Encoding.METADATA_TAGS));
+
+		return metadataStr.append(enc).toString();
+	}
+
+
+	public static String mei2tbp(String mei) {
+		return null;
 	}
 
 
@@ -787,38 +856,6 @@ public class TabImport {
 		}
 		
 		return convertedRS + convertedTabWord + Symbol.SPACE.getEncoding() + ss;
-	}
-
-
-	/**
-	 * Creates a tab+ encoding from the given Sibelius ASCII file.
-	 * 
-	 * @param ascii
-	 * @return
-	 */
-	public static String ascii2tbp(String ascii) {
-		// Make encoding
-		List<List<String>> systemContents = getSystemContents(getSystems(ascii));
-//		systemContents.get(0).forEach(s -> System.out.println(s));
-		StringBuffer enc = getEncoding(systemContents);
-
-		// Make metadataString
-		String tss = systemContents.get(systemContents.size()-1).get(0);
-		String tuning = systemContents.get(systemContents.size()-1).get(1);
-		String[] metadata = new String[]{
-			"", // author TODO
-			"", // title TODO
-			"", // source TODO
-			tss, // TabSymbolSet  
-			tuning, // Tuning
-			createMeterInfoString(enc.toString(), tss), // meterinfo 
-			"" // diminution
-		};
-
-		StringBuffer metadataStr = 
-			new StringBuffer(createMetaData(metadata, Encoding.METADATA_TAGS));
-
-		return metadataStr.append(enc).toString();
 	}
 
 

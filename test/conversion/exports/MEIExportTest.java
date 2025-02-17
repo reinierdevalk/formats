@@ -20,6 +20,7 @@ import internal.core.Encoding;
 import internal.structure.Event;
 import tbp.symbols.Symbol;
 import tools.ToolBox;
+import tools.text.StringTools;
 
 public class MEIExportTest {
 
@@ -45,15 +46,15 @@ public class MEIExportTest {
 		String td = "test/5vv/";
 
 		encodingTestpiece = new File(
-			CLInterface.getPathString(Arrays.asList(ep, td)) + "testpiece.tbp"
+			StringTools.getPathString(Arrays.asList(ep, td)) + "testpiece.tbp"
 		);
-		encodingNewsidler = new File(CLInterface.getPathString(
+		encodingNewsidler = new File(StringTools.getPathString(
 			Arrays.asList(ep, "thesis-int", "3vv")) + "newsidler-1544_2-nun_volget.tbp"
 		);
-		midiTestpiece = new File(CLInterface.getPathString(
+		midiTestpiece = new File(StringTools.getPathString(
 			Arrays.asList(mp, td)) + "testpiece.mid"
 		);
-		midiNewsidler = new File(CLInterface.getPathString(
+		midiNewsidler = new File(StringTools.getPathString(
 			Arrays.asList(mp, "thesis-int", "3vv")) + "newsidler-1544_2-nun_volget.mid"	
 		);
 	}

@@ -46,15 +46,15 @@ import javax.swing.text.Highlighter.HighlightPainter;
 import org.apache.commons.io.FilenameUtils;
 
 import conversion.exports.MEIExport;
-import external.Tablature;
-import external.Tablature.Tuning;
-import interfaces.CLInterface;
 import conversion.imports.TabImport;
+import external.Tablature;
+import interfaces.CLInterface;
 import internal.core.Encoding;
 import internal.core.Encoding.Stage;
 import tbp.symbols.Symbol;
 import tbp.symbols.TabSymbol.TabSymbolSet;
 import tools.ToolBox;
+import tools.text.StringTools;
 
 /**
  * @author Reinier de Valk
@@ -118,7 +118,7 @@ public class Editor extends JFrame{
 	// https://stackoverflow.com/questions/8852560/how-to-make-popup-window-in-java
 	// try-catch block is only needed when reading from a File using a BufferedReader
 	public static void main(String[] args) {
-		boolean dev = args.length == 0 ? true : args[0].equals(String.valueOf(true));
+		boolean dev = args.length == 0 ? true : args[CLInterface.DEV_IND].equals(String.valueOf(true));
 		String source = args[4];
 		String destination = args[5];
 		Map<String, String> argPaths = CLInterface.getPaths(dev);
@@ -126,7 +126,6 @@ public class Editor extends JFrame{
 		// Parse CLI args and set variables
 		List<Object> parsed = CLInterface.parseCLIArgs(args, null);
 		cliOptsVals = (Map<String, String>) parsed.get(0);
-		System.exit(0);
 
 		// No source and destination provided: convert through editor
 		if (source.equals("") && destination.equals("")) {
@@ -140,34 +139,39 @@ public class Editor extends JFrame{
 			String outputName = ToolBox.splitExt(destination)[0];
 			String outputFormat = ToolBox.splitExt(destination)[1];
 
-			String tbp = TabImport.tc2tbp(ToolBox.readTextFile(new File(cp + source)));
+			// In editor menu:
+			// Import: ASCII, TabCode, MEI
+			// Export: ASCII, MEI
 
-			// MEI
-			if (inputFormat.equals(MEIExport.MEI_EXT) || inputFormat.equals(MEIExport.XML_EXT)) {
-				
-			}
-			// ASCII
-			else if (inputFormat.equals(TabImport.TAB_EXT)) {
+			// Convert to .tbp (from .mei, .tab, .tc, .xml)
+			String tbp = TabImport.convertToTbp(cp, source);
 
+			// Source is .tbp
+			if (outputFormat.equals(Encoding.TBP_EXT)) {
+				ToolBox.storeTextFile(tbp, new File(cp + destination));
 			}
-			// tab+
-			else if (inputFormat.equals(Encoding.TBP_EXT)) {
-
-			}
-			// TabCode
-			if (inputFormat.equals(TabImport.TC_EXT)) {
-				if (outputFormat.equals(MEIExport.MEI_EXT)) {
-					Encoding e = new Encoding(
-						tbp, outputName, Stage.RULES_CHECKED
-					);
+			// Source is .mei, tab, .tc, .xml
+			else {
+				if (outputFormat.equals(MEIExport.MEI_EXT) || outputFormat.equals(MEIExport.XML_EXT)) {
+					Encoding e = new Encoding(tbp, outputName, Stage.RULES_CHECKED);
 					Tablature tab = new Tablature(e, false);
 					cliOptsVals = CLInterface.setPieceSpecificTransParams(cliOptsVals, tab, "converter");
 					String mei = MEIExport.exportMEIFile(
 						null, new Tablature(e, false), null, CLInterface.getTranscriptionParams(cliOptsVals), 
-						argPaths, new String[]{null, "abtab -- converter"}
+						argPaths, new String[]{
+							null, 
+							source,
+							"abtab -- converter"
+						}
 					);
 					ToolBox.storeTextFile(mei, new File(cp + destination));
-				};
+				}
+				else if (outputFormat.equals(TabImport.TAB_EXT)) {
+					// TODO
+				}
+				else if (outputFormat.equals(TabImport.TC_EXT)) {
+					// TODO
+				}
 			}
 		}
 	}
@@ -193,7 +197,7 @@ public class Editor extends JFrame{
 		setTabTextArea();
 		setTabStyleButtonGroup();
 		setRhythmFlagsCheckBox();
-		setFileChooser(new File(CLInterface.getPathString(Arrays.asList(argPaths.get("CONVERTER_PATH")))));
+		setFileChooser(new File(StringTools.getPathString(Arrays.asList(argPaths.get("CONVERTER_PATH")))));
 //		setFileChooser(new File("F:/research/computation/tool_data/converter/"));
 //		setFileChooser(new File("F:/research/data/user/in/"));
 		setPaths(argPaths);
@@ -729,7 +733,11 @@ public class Editor extends JFrame{
 						cliOptsVals = CLInterface.setPieceSpecificTransParams(cliOptsVals, tab, "converter");
 						contents = MEIExport.exportMEIFile(
 							null, tab, null, CLInterface.getTranscriptionParams(cliOptsVals), 
-							getPaths(), new String[]{null, "abtab -- converter"} 
+							getPaths(), new String[]{
+								null, 
+								file != null ? file.getName() : importFile.getName(),
+								"abtab -- converter"
+							}
 						);
 					}
 				}
