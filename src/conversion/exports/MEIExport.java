@@ -534,8 +534,10 @@ public class MEIExport {
 					currMi[currMi.length - 1] == 1 && tabMs != null : 
 					currMi[currMi.length - 1] == 1;
 
-			// Only add the scoreDef if there is a *specified* meter change or a key change 
-			if (!(includeMeter || includeKey)) {
+			// Always add a scoreDef at the beginning of the piece; at the remaining meter
+			// or key change bars, only add the scoreDef if there is a *specified* meter 
+			// change or a key change, else add null
+			if (!(includeMeter || includeKey) && scoreDefs.size() > 0) {
 				scoreDefs.add(null);
 			}
 			else {

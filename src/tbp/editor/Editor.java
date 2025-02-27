@@ -119,21 +119,54 @@ public class Editor extends JFrame{
 	// try-catch block is only needed when reading from a File using a BufferedReader
 	public static void main(String[] args) {
 		boolean dev = args.length == 0 ? true : args[CLInterface.DEV_IND].equals(String.valueOf(true));
-		String source = args[4];
-		String destination = args[5];
+		boolean store = Boolean.parseBoolean(args[4]);
+		String source = args[5];
+		String destination = args[6];
+		System.err.println("hier");
+		System.err.println(args[0]);
+		System.err.println(args[1]);
+		System.err.println(args[2]);
+		System.err.println(args[3]);
+		System.err.println(store);
+		System.err.println(source);
+		System.err.println(destination);
+//		System.exit(0);
 		Map<String, String> argPaths = CLInterface.getPaths(dev);
-
-		// Parse CLI args and set variables
-		List<Object> parsed = CLInterface.parseCLIArgs(args, null);
-		cliOptsVals = (Map<String, String>) parsed.get(0);
 
 		// No source and destination provided: convert through editor
 		if (source.equals("") && destination.equals("")) {
+			// Parse CLI args and set variables
+			List<Object> parsed = CLInterface.parseCLIArgs(args, null);
+			cliOptsVals = (Map<String, String>) parsed.get(0);
 			new Editor(argPaths);
 		}
 		// Else: convert directly
 		else {
-			String cp = argPaths.get("CONVERTER_PATH");
+			// Called from abtab converter
+			String[] a = args;
+			if (store) {
+				a = args;
+			}
+			// Called from diplomat.py
+			else {
+				// Mimic flow as if Editor is called with abtab converter
+				String opts = "-u -t -y";
+				String defaultVals = "i y i";
+				String uov = "";
+				String[] argsJava = new String[4];
+				argsJava[CLInterface.DEV_IND] = Boolean.toString(dev);
+				argsJava[CLInterface.OPTS_IND] = opts;
+				argsJava[CLInterface.DEFAULT_VALS_IND] = defaultVals;
+				argsJava[CLInterface.USER_OPTS_VALS_IND] = uov;
+				a = argsJava;
+			}
+			// Parse CLI args and set variables
+			List<Object> parsed = CLInterface.parseCLIArgs(a, null);
+			cliOptsVals = (Map<String, String>) parsed.get(0);
+
+			String cp = 
+				store ? argPaths.get("CONVERTER_PATH") : 
+				StringTools.getPathString(Arrays.asList(argPaths.get("DIPLOMAT_PATH"), "in"));
 			String inputName = ToolBox.splitExt(source)[0];
 			String inputFormat = ToolBox.splitExt(source)[1];
 			String outputName = ToolBox.splitExt(destination)[0];
@@ -164,7 +197,19 @@ public class Editor extends JFrame{
 							"abtab -- converter"
 						}
 					);
-					ToolBox.storeTextFile(mei, new File(cp + destination));
+					if (store) {
+						ToolBox.storeTextFile(mei, new File(cp + destination));
+					}
+					else {
+//						System.err.println(mei);
+						Map<String, String> m = new LinkedHashMap<>();
+						m.put("content", mei);
+//						String dict = "{\"content\": " + 
+//							"\"" + mei + "\"" + // mei needs to be placed in double quotes for json.loads()
+//						"}";
+						String pythonDict = StringTools.createJSONString(m);
+						System.out.println(pythonDict);
+					}
 				}
 				else if (outputFormat.equals(TabImport.TAB_EXT)) {
 					// TODO
