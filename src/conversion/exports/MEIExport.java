@@ -2245,9 +2245,9 @@ public class MEIExport {
 		// 2. Run beaming script; delete stored file
 		// NB: the output of the beaming script does not end with a line break, but 
 		// PythonInterface.runPythonFileAsScript() adds one to the end of it
+		String python = PythonInterface.python2Installed() ? "python3" : "python";
 		String beamedStr = PythonInterface.runPythonFileAsScript(
-			new String[]{"python", psp + paths.get("BEAM_SCRIPT"), fName}
-//			new String[]{"python", psp + "beam.py", fName}
+			new String[]{python, psp + paths.get("BEAM_SCRIPT"), fName}
 		);
 //		String beamedStr = "";
 //		try {
