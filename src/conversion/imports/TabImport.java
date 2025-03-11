@@ -19,6 +19,7 @@ import conversion.exports.MEIExport;
 import external.Tablature;
 import external.Tablature.Tuning;
 import interfaces.CLInterface;
+import interfaces.PythonInterface;
 import internal.core.Encoding;
 import internal.core.Encoding.Stage;
 import tbp.symbols.ConstantMusicalSymbol;
@@ -28,6 +29,7 @@ import tbp.symbols.Symbol;
 import tbp.symbols.TabSymbol;
 import tbp.symbols.TabSymbol.TabSymbolSet;
 import tools.ToolBox;
+import tools.text.StringTools;
 
 public class TabImport {
 
@@ -80,6 +82,15 @@ public class TabImport {
 
 
 	public static void main(String[] args) {
+		String f = "C:/Users/Reinier/Desktop/test2tbp.mei"; 
+		boolean dev = true;
+		Map<String, String> paths = CLInterface.getPaths(dev);
+		String python = PythonInterface.python2Installed() ? "python3" : "python";
+		// TODO change UTILS_PYTHON_PATH to formats/py ?
+		String psp = StringTools.getPathString(Arrays.asList(paths.get("UTILS_PYTHON_PATH")));
+		String beamedStr = PythonInterface.runPythonFileAsScript(
+			new String[]{python, psp + paths.get("MEI_2_TBP_SCRIPT"), f}
+		);
 	}
 	
 	public static void main2(String[] args) {
