@@ -2250,6 +2250,7 @@ public class MEIExport {
 		String beamedStr = PythonInterface.runPythonFileAsScript(
 			new String[]{python, psp + paths.get("BEAM_SCRIPT"), fName}
 		);
+
 //		String beamedStr = "";
 //		try {
 //			beamed = PythonInterface.runPythonFileAsScript(

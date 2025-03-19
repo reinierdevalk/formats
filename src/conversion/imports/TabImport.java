@@ -444,6 +444,7 @@ public class TabImport {
 		Map<String, String> mensurationSigns = new LinkedHashMap<String, String>();
 		mensurationSigns.put("2:4", Symbol.TWO.getEncoding());
 		mensurationSigns.put("3:4", Symbol.THREE.getEncoding());
+		mensurationSigns.put("3/4", Symbol.THREE.getEncoding()); // julia 19.03
 		mensurationSigns.put("3", Symbol.THREE.getEncoding()); // olja 10.12
 		mensurationSigns.put("5:4", Symbol.FIVE.getEncoding());
 		mensurationSigns.put("6:4", Symbol.SIX.getEncoding());
