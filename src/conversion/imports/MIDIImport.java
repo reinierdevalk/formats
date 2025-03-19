@@ -60,15 +60,15 @@ public class MIDIImport {
 //			MidiImport midiImport = new MidiImport();
 			String currStr = "";
 			int count = 1;
-			currStr += Arrays.asList(importMidiFile(curr).getHarmonyTrack().getContentsRecursive()) + "\r\n";
-			currStr += importMidiFile(curr).getMetricalTimeLine() + "\r\n";
+			currStr += Arrays.asList(importMidiFile(curr).getHarmonyTrack().getContentsRecursive()) + "\n";
+			currStr += importMidiFile(curr).getMetricalTimeLine() + "\n";
 			for (NotationStaff ns : importMidiFile(curr).getScore()) {
-				currStr += "staff " + count + "\r\n";
+				currStr += "staff " + count + "\n";
 				count++;
 				for (NotationVoice nss : ns) {
 					for (NotationChord nc : nss) {
 						for (Note n : nc) {
-							currStr += n + "\r\n";
+							currStr += n + "\n";
 						}
 					}
 				}
@@ -76,15 +76,15 @@ public class MIDIImport {
 //			System.out.println(currStr);
 			String githStr = "";
 			count = 1;
-			githStr += Arrays.asList(importMidiFile(gith).getHarmonyTrack().getContentsRecursive()) + "\r\n";
-			githStr += importMidiFile(gith).getMetricalTimeLine() + "\r\n";
+			githStr += Arrays.asList(importMidiFile(gith).getHarmonyTrack().getContentsRecursive()) + "\n";
+			githStr += importMidiFile(gith).getMetricalTimeLine() + "\n";
 			for (NotationStaff ns : importMidiFile(gith).getScore()) {
-				githStr += "staff " + count + "\r\n";
+				githStr += "staff " + count + "\n";
 				count++;
 				for (NotationVoice nss : ns) {
 					for (NotationChord nc : nss) {
 						for (Note n : nc) {
-							githStr += n + "\r\n";
+							githStr += n + "\n";
 						}
 					}
 				}

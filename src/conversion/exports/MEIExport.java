@@ -254,6 +254,7 @@ public class MEIExport {
 
 		String tp = StringTools.getPathString(Arrays.asList(paths.get("TEMPLATES_PATH")));
 		String mei = ToolBox.readTextFile(new File(tp + paths.get("MEI_TEMPLATE")));
+		mei = StringTools.crlf2lf(mei);
 		String path = dict[0];
 
 		boolean includeTab = transParams.get(CLInterface.TABLATURE).equals("y");
@@ -334,7 +335,7 @@ public class MEIExport {
 		// d. Add the main scoreDef, which is placed before the first section. All
 		// <section>s after the main one have their <scoreDef> as the first child
 		StringBuilder scorePlaceholder = new StringBuilder();
-		scoreDefs.get(0).forEach(s -> scorePlaceholder.append(INDENT_ONE + s + "\r\n"));
+		scoreDefs.get(0).forEach(s -> scorePlaceholder.append(INDENT_ONE + s + "\n")); // WOENS
 		// e. Add the <section>s
 		for (int i = 0; i < sectionBars.size(); i++) {
 			int sectionFirstBar = sectionBars.get(i);
@@ -372,11 +373,11 @@ public class MEIExport {
 				}
 				atts[atts.length -1] = new String[]{"label", label};
 			}
-			scorePlaceholder.append(INDENT_ONE + makeOpeningTag("section", false, atts) + "\r\n");
+			scorePlaceholder.append(INDENT_ONE + makeOpeningTag("section", false, atts) + "\n"); // WOENS
 
 			// Add <scoreDef>
 			if (i > 0 && currScoreDef != null) {
-				scoreDefs.get(i).forEach(s -> scorePlaceholder.append(INDENT_TWO + s + "\r\n"));
+				scoreDefs.get(i).forEach(s -> scorePlaceholder.append(INDENT_TWO + s + "\n")); // WOENS
 			}
 
 			// Add <measure>s
@@ -390,26 +391,26 @@ public class MEIExport {
 						(b == numBars ? new String[]{"right", "end"} : null)
 
 					}
-				) + "\r\n");
+				) + "\n"); // WOENS
 
 				if (ONLY_TAB || (TAB_AND_TRANS && TAB_ON_TOP)) {
-					tabBars.get(b-1).forEach(s -> scorePlaceholder.append(INDENT_TWO + TAB + s + "\r\n"));
+					tabBars.get(b-1).forEach(s -> scorePlaceholder.append(INDENT_TWO + TAB + s + "\n")); // WOENS
 					if (!ONLY_TAB) {
-						transBars.get(b-1).forEach(s -> scorePlaceholder.append(INDENT_TWO + TAB + s + "\r\n"));
+						transBars.get(b-1).forEach(s -> scorePlaceholder.append(INDENT_TWO + TAB + s + "\n")); // WOENS
 					}
 				}
 				if ((TAB_AND_TRANS && !TAB_ON_TOP) || ONLY_TRANS) {
-					transBars.get(b-1).forEach(s -> scorePlaceholder.append(INDENT_TWO + TAB + s + "\r\n"));
+					transBars.get(b-1).forEach(s -> scorePlaceholder.append(INDENT_TWO + TAB + s + "\n")); // WOENS
 					if (!ONLY_TRANS) {
-						tabBars.get(b-1).forEach(s -> scorePlaceholder.append(INDENT_TWO + TAB + s + "\r\n"));
+						tabBars.get(b-1).forEach(s -> scorePlaceholder.append(INDENT_TWO + TAB + s + "\n")); // WOENS
 					}
 				}
-				scorePlaceholder.append(INDENT_TWO + makeClosingTag("measure")+ "\r\n");
+				scorePlaceholder.append(INDENT_TWO + makeClosingTag("measure")+ "\n"); // WOENS
 				
 			}
-			scorePlaceholder.append(INDENT_ONE + makeClosingTag("section") + "\r\n");
+			scorePlaceholder.append(INDENT_ONE + makeClosingTag("section") + "\n"); // WOENS
 		}
-		mei = mei.replace(INDENT_ONE + "score_placeholder" + "\r\n", scorePlaceholder.toString());
+		mei = mei.replace(INDENT_ONE + "score_placeholder" + "\n", scorePlaceholder.toString()); // WOENS
 
 		// 3. Save
 		if (path != null) { 
@@ -2209,7 +2210,7 @@ public class MEIExport {
 		// 1. Make unbeamed, organised per voice, bar (for the python beaming script)
 		List<List<String>> unbeamed = new ArrayList<>();
 		for (int i = 0; i < numVoices; i++) {
-			unbeamed.add(new ArrayList<String>(Arrays.asList(new String[]{"voice=" + i + "\r\n"})));
+			unbeamed.add(new ArrayList<String>(Arrays.asList(new String[]{"voice=" + i + "\n"}))); // WOENS
 		}
 		// Populate unbeamed
 //		Timeline tla = TAB_AND_TRANS ? tab.getEncoding().getTimelineAgnostic() : null; // dimmid
@@ -2222,13 +2223,13 @@ public class MEIExport {
 			for (int j = 0; j < numVoices; j++) {
 				if (verbose) System.out.println("voice = " + j);
 				StringBuilder barListSb = new StringBuilder();
-				barListSb.append("meter='" + currMeter.getNumer() + "/" + currMeter.getDenom() + "'" + "\r\n");
+				barListSb.append("meter='" + currMeter.getNumer() + "/" + currMeter.getDenom() + "'" + "\n"); // WOENS
 				List<String> barList = getBar( // dimmid
 					currBarInts.get(j), currBarStrs.get(j), tripletOnsetPairs, 
 					mismatchInds, j
 					/*, (TAB_AND_TRANS ? tla.getDiminution(bar) : 1)*/
 				);
-				barList.forEach(s -> barListSb.append(s + "\r\n"));
+				barList.forEach(s -> barListSb.append(s + "\n")); // WOENS
 				unbeamed.get(j).add(barListSb.toString());
 			}
 		}
@@ -2270,10 +2271,10 @@ public class MEIExport {
 		// Populate beamed
 		for (int i = 0; i < numVoices; i++) {
 			List<String> barsCurrVoice = Arrays.asList(
-				(Arrays.asList(beamedStr.split("end of voice" + "\r\n")))
-				.get(i).split("end of bar" + "\r\n"));
+				(Arrays.asList(beamedStr.split("end of voice" + "\n"))) // WOENS
+				.get(i).split("end of bar" + "\n")); // WOENS
 			for (int j = 0; j < numBars; j++) {
-				beamed.get(j).get(i).addAll(Arrays.asList(barsCurrVoice.get(j).split("\r\n")));
+				beamed.get(j).get(i).addAll(Arrays.asList(barsCurrVoice.get(j).split("\n"))); // WOENS
 			}
 		}
 
@@ -3291,6 +3292,7 @@ public class MEIExport {
 		for (int i = 0; i < sectionBars.size(); i++) {
 			sb.append(sectionsAsStr.get(i));
 		}
+
 		res = res.replace(INDENT_ONE + "score_placeholder" + "\r\n", sb.toString());
 
 		if (path != null) { 

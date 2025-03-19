@@ -658,7 +658,7 @@ public class Editor extends JFrame{
 			try (BufferedReader br = new BufferedReader(new FileReader(f))) {
 				String line;
 				while ((line = br.readLine()) != null) {
-					sb.append(line).append("\r\n");
+					sb.append(line).append("\n"); // WOENS
 				}
 			} catch (IOException e) {
 				e.printStackTrace();
@@ -680,7 +680,8 @@ public class Editor extends JFrame{
 				}
 			}
 			// Set JTextAreas contents
-			populateTextArea(handleReturns(contents), getEncodingTextArea());
+			populateTextArea(StringTools.crlf2lf(contents), getEncodingTextArea());
+//			populateTextArea(handleReturns(contents), getEncodingTextArea());
 			populateTextArea("", getTabTextArea());
 			// Set file, importFile, and title
 			setFile(importType == null ? f : null);
@@ -698,7 +699,8 @@ public class Editor extends JFrame{
 			}
 			// Opened file
 			else {
-				ToolBox.storeTextFile(handleReturns(getEncodingTextArea().getText()), getFile());
+				ToolBox.storeTextFile(StringTools.crlf2lf(getEncodingTextArea().getText()), getFile());
+//				ToolBox.storeTextFile(handleReturns(getEncodingTextArea().getText()), getFile());
 			}
 		}
 	}
@@ -745,7 +747,8 @@ public class Editor extends JFrame{
 				// Get contents of encodingTextArea
 				// NB: returns entered directly in encodingTextArea are \n, but are saved as \r\n (applies to 
 				// Save as-case only); returns in file contents opened into encodingTextArea are always \r\n
-				String etaContents = handleReturns(getEncodingTextArea().getText()); 
+				String etaContents = StringTools.crlf2lf(getEncodingTextArea().getText());
+//				String etaContents = handleReturns(getEncodingTextArea().getText());
 				// Make contents to save as/export
 				String contents = null;
 				// Save as-case
@@ -822,8 +825,8 @@ public class Editor extends JFrame{
 		getHighlighter().removeAllHighlights();
 		if (checkEncoding() == null) {
 			populateTextArea(makeASCIITab(new Encoding(
-				handleReturns(getEncodingTextArea().getText()), "", Stage.RULES_CHECKED)), 
-				getTabTextArea()
+				StringTools.crlf2lf(getEncodingTextArea().getText()), "", Stage.RULES_CHECKED)), getTabTextArea()
+//				handleReturns(getEncodingTextArea().getText()), "", Stage.RULES_CHECKED)), getTabTextArea()
 			);
 		}
 	}
@@ -841,7 +844,8 @@ public class Editor extends JFrame{
 
 
 	private String[] checkEncoding() {
-		String rawEnc = handleReturns(getEncodingTextArea().getText());
+		String rawEnc = StringTools.crlf2lf(getEncodingTextArea().getText());
+//		String rawEnc = handleReturns(getEncodingTextArea().getText());
 		String[] check = Encoding.checkEncoding(rawEnc);
 		if (check != null) {
 			createHighlight(check);

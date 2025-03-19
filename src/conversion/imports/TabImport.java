@@ -299,6 +299,8 @@ public class TabImport {
 	 * @return
 	 */
 	public static String tc2tbp(String tc) {
+		tc = StringTools.crlf2lf(tc);
+
 		Map<Integer, String> tunings = new LinkedHashMap<Integer, String>();
 		tunings.put(65, "F");
 		tunings.put(67, "G");
@@ -329,7 +331,6 @@ public class TabImport {
 
 		// 1. Make encoding string
 		StringBuffer tbpEncoding = getEncoding(tc);
-//		System.out.println(tbpEncoding.toString());
 
 		// TODO
 		// meterInfo: if converted from non-tbp file: following information in that file should work
@@ -364,7 +365,10 @@ public class TabImport {
 			rulesMap.get("source") != null ? rulesMap.get("source") : "",
 			tss,  
 			tuning,
+			// meterInfo and diminution must be provided together (so they must either both be
+			// "" or both be a valid non-empty String); see Timeline.makeDiminutions()
 			"",
+//			createMeterInfoString(tbpEncoding.toString(), tss),
 //			rulesMap.get("meterInfo") != null ? rulesMap.get("meterInfo") : miStr, 
 			""
 //			rulesMap.get("durScale") != null ? rulesMap.get("durScale") : 
@@ -373,19 +377,19 @@ public class TabImport {
 
 		// Make Encoding
 		Encoding enc = new Encoding(
-			createMetaData(metadata, Encoding.METADATA_TAGS) + tbpEncoding.toString(), "", 
+			createMetadata(metadata, Encoding.METADATA_TAGS) + tbpEncoding.toString(), "", 
 			Stage.RULES_CHECKED
 		);
 
 //		List<String[]> msi = tab.getMensurationSigns();
 //		tbi.forEach(in -> System.out.println(Arrays.asList(in)));
 //		System.exit(0);
-		
+
 		String miStr = createMeterInfoString(tbpEncoding.toString(), tss);
-		
+
 		StringBuffer metadataStr = 
-			new StringBuffer(createMetaData(metadata, Encoding.METADATA_TAGS));
-		
+			new StringBuffer(createMetadata(metadata, Encoding.METADATA_TAGS));
+
 //		System.out.println(metadataStr.toString());
 //		System.exit(0);
 		
@@ -401,6 +405,8 @@ public class TabImport {
 	 * @return
 	 */
 	public static String ascii2tbp(String ascii) {
+		ascii = StringTools.crlf2lf(ascii);
+		
 		// Make encoding
 		List<List<String>> systemContents = getSystemContents(getSystems(ascii));
 //		systemContents.get(0).forEach(s -> System.out.println(s));
@@ -420,13 +426,14 @@ public class TabImport {
 		};
 
 		StringBuffer metadataStr = 
-			new StringBuffer(createMetaData(metadata, Encoding.METADATA_TAGS));
+			new StringBuffer(createMetadata(metadata, Encoding.METADATA_TAGS));
 
 		return metadataStr.append(enc).toString();
 	}
 
 
 	public static String mei2tbp(String mei) {
+		mei = StringTools.crlf2lf(mei);
 		return null;
 	}
 
@@ -458,17 +465,19 @@ public class TabImport {
 			int open = tc.indexOf("{");
 			tc = tc.replace(tc.substring(open, (tc.indexOf("}", open+1)+1)), "");
 		}
+
 		tc = tc.replace("SysBr", tcSysBreak).replace("PgBr", tcPageBreak);
 		// Separate all tabwords by single line breaks only (in the TabCode they can be separated by 
 		// spaces, tabs, or line breaks). See also 
 		// https://stackoverflow.com/questions/22787000/how-to-remove-multiple-line-breaks-from-a-string
-		tc = tc.trim().replace(" ", "\r\n").replace("\t", "\r\n").replaceAll("(\r?\n){2,}", "$1");
+		tc = tc.trim().replace(" ", "\n").replace("\t", "\n").replaceAll("(\n){2,}", "$1");
+//		tc = tc.trim().replace(" ", "\r\n").replace("\t", "\r\n").replaceAll("(\r?\n){2,}", "$1");
 
 		int prevDur = 0; // TODO only used to add to durCurrRhythmGroup, which (in the end) is not used 
 		int totalDur = 0;
 		List<String> meters = new ArrayList<>();
 		List<Integer> onsets = new ArrayList<>();
-		String[] tabwords = tc.split("\r\n");
+		String[] tabwords = tc.split("\n");
 		// TODO deal properly with fingering dots following a tabword
 		for (int i = 0; i < tabwords.length; i++) {
 			String tabword = tabwords[i];
@@ -508,7 +517,8 @@ public class TabImport {
 			}
 			// Constant musical symbol (barline etc.)
 			else if (Symbol.getConstantMusicalSymbol(tabword) != null) {
-				asTbp += tabword + ss + "\r\n";
+				
+				asTbp += tabword + ss + "\n";
 //				// In case of a barline following a triplet group
 //				if (ConstantMusicalSymbol.getConstantMusicalSymbol(tabword) != 
 //					ConstantMusicalSymbol.SPACE && tripletActive) {
@@ -518,10 +528,10 @@ public class TabImport {
 			}
 			// System break
 			else if (tabword.equals(tcSysBreak)) {
-				if (!tbpEncoding.toString().endsWith("\r\n")) {
-					asTbp += "\r\n";
+				if (!tbpEncoding.toString().endsWith("\n")) {
+					asTbp += "\n";
 				}
-				asTbp += Symbol.SYSTEM_BREAK_INDICATOR + "\r\n";
+				asTbp += Symbol.SYSTEM_BREAK_INDICATOR + "\n";
 			}
 			// Tabword starting with RS (non-beamed)
 			else if (RHYTHM_SYMBOLS.containsKey(tabword.substring(0, 1))) {
@@ -651,7 +661,7 @@ public class TabImport {
 
 					// If system break in between
 					if (nextTabword.startsWith(tcSysBreak)) {
-						asTbp += "\r\n" + Symbol.SYSTEM_BREAK_INDICATOR + "\r\n";
+						asTbp += "\n" + Symbol.SYSTEM_BREAK_INDICATOR + "\n";
 					}
 					// If last tabword in beaming group
 					if (nextTabword.startsWith("]")) {
@@ -721,8 +731,8 @@ public class TabImport {
 			tbpEncoding.append(asTbp);
 			totalDur += durCurrRhythmGroup;
 		}
-		if (!tbpEncoding.toString().endsWith("\r\n")) {
-			tbpEncoding.append("\r\n"); 
+		if (!tbpEncoding.toString().endsWith("\n")) {
+			tbpEncoding.append("\n");
 		}
 		tbpEncoding.append(Symbol.END_BREAK_INDICATOR);
 		return tbpEncoding;
@@ -901,7 +911,7 @@ public class TabImport {
 	static String createMeterInfoString(String argCleanEncoding, String tss) {
 
 		// Remove line breaks and system separators; then split into symbols
-		String[] symbols = argCleanEncoding.replace("\r\n", "").replace("/", "").split("\\"+Symbol.SYMBOL_SEPARATOR);
+		String[] symbols = argCleanEncoding.replace("\n", "").replace("/", "").split("\\"+Symbol.SYMBOL_SEPARATOR);
 		// Remove any initial barline
 		if (Symbol.getConstantMusicalSymbol(symbols[0]) != null) {
 			symbols = Arrays.copyOfRange(symbols, 1, symbols.length);
@@ -1032,15 +1042,15 @@ public class TabImport {
 	}
 
 
-	static String createMetaData(String[] metadata, String[] tags) { // TODO get from Encoding?
+	static String createMetadata(String[] metadata, String[] tags) { // TODO get from Encoding?
 		String metadataStub = "";
 //		String [] tags = getMetaDataTags();
 		for (int i = 0; i < tags.length; i++) {
 			String currTag = tags[i];
 			metadataStub += Encoding.OPEN_METADATA_BRACKET + currTag + ": " +  metadata[i] +
-				Encoding.CLOSE_METADATA_BRACKET + "\r\n";
+				Encoding.CLOSE_METADATA_BRACKET + "\n";
 			if (i == 2 || i == tags.length - 1) {
-				metadataStub += "\r\n";
+				metadataStub += "\n";
 			}
 		}
 		return metadataStub;
@@ -1056,7 +1066,7 @@ public class TabImport {
 	private static List<String[][]> getSystems(String s) {
 		List<String[][]> systems = new ArrayList<String[][]>();
 
-		String[] lines = s.split("\r\n");
+		String[] lines = s.split("\n");
 		int numCourses = 0;
 		for (String line : lines) {
 			if (line.contains("|-") && !line.contains("Triplet")) {
@@ -1466,7 +1476,7 @@ public class TabImport {
 						if (event.equals(BARLINE_EVENT)) {
 							// If single barline
 							if (nextEvent != null && !nextEvent.equals(BARLINE_EVENT) || nextEvent == null) {
-								currSystem.append(Symbol.BARLINE.getEncoding() + ss + "\r\n");
+								currSystem.append(Symbol.BARLINE.getEncoding() + ss + "\n");
 							}
 							// If double barline or start repeat double barline
 							if (nextEvent != null && nextEvent.equals(BARLINE_EVENT)) {
@@ -1480,20 +1490,20 @@ public class TabImport {
 									toAdd = Symbol.BARLINE.makeVariant(2, "left").getEncoding();
 									j++; // to skip also event after next event
 								}
-								currSystem.append(toAdd + ss + "\r\n");
+								currSystem.append(toAdd + ss + "\n");
 							}
 						}
 						// If end repeat double barline
 						if (event.equals(REPEAT_DOTS_EVENT)) {
 							currSystem.append(
-								Symbol.BARLINE.makeVariant(2, "right").getEncoding() + ss + "\r\n");
+								Symbol.BARLINE.makeVariant(2, "right").getEncoding() + ss + "\n");
 							j += 2;
 						}
 					}
 				}
 			}
 			if (i+1 < systemContentsNoLast.size()) {
-				currSystem.append(Symbol.SYSTEM_BREAK_INDICATOR + "\r\n");
+				currSystem.append(Symbol.SYSTEM_BREAK_INDICATOR + "\n");
 			}
 			else {
 				currSystem.append(Symbol.END_BREAK_INDICATOR);
