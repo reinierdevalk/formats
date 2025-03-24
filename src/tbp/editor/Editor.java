@@ -122,7 +122,7 @@ public class Editor extends JFrame{
 		String opts = args[CLInterface.OPTS_IND];
 		String defaultVals = args[CLInterface.DEFAULT_VALS_IND];
 		String uov = args[CLInterface.USER_OPTS_VALS_IND];
-		boolean store = Boolean.parseBoolean(args[4]);
+		boolean store = Boolean.parseBoolean(args[4]); // true when called by abtab; false when called by diplomat.py
 		String source = args[5];
 		String destination = args[6];
 		Map<String, String> argPaths = CLInterface.getPaths(dev);
@@ -176,7 +176,9 @@ public class Editor extends JFrame{
 			// Export: ASCII, MEI
 
 			// Convert to .tbp (from .mei, .tab, .tc, .xml)
-			String tbp = TabImport.convertToTbp(cp, source);
+			String tbp = TabImport.convertToTbp(cp, source, argPaths);
+//			System.out.println(tbp);
+//			System.exit(0);
 
 			// Source is .tbp
 			if (outputFormat.equals(Encoding.TBP_EXT)) {
@@ -653,32 +655,40 @@ public class Editor extends JFrame{
 		// If dialog is confirmed
 		if (fc.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
 			File f = fc.getSelectedFile();
-			// Get contents of f
-			StringBuilder sb = new StringBuilder();
-			try (BufferedReader br = new BufferedReader(new FileReader(f))) {
-				String line;
-				while ((line = br.readLine()) != null) {
-					sb.append(line).append("\n"); // WOENS
-				}
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-			String fileContents = sb.toString();
 			// Make contents to set in encodingTextArea
-			String contents = null; 
-			// Open case
-			if (importType == null) {
-				contents = fileContents;
-			}
-			// Import case
-			else {
-				if (importType.equals(ASCII)) {
-					contents = TabImport.ascii2tbp(fileContents);
-				}
-				else if (importType.equals(TC)) {
-					contents = TabImport.tc2tbp(fileContents);
-				}
-			}
+			String contents = TabImport.convertToTbp(
+				StringTools.getPathString(Arrays.asList(f.getParent())), f.getName(), paths
+			);
+
+//			// Get contents of f
+//			StringBuilder sb = new StringBuilder();
+//			try (BufferedReader br = new BufferedReader(new FileReader(f))) {
+//				String line;
+//				while ((line = br.readLine()) != null) {
+//					sb.append(line).append("\n"); // WOENS
+//				}
+//			} catch (IOException e) {
+//				e.printStackTrace();
+//			}
+//			String fileContents = sb.toString();
+//			// Make contents to set in encodingTextArea
+//			String contents = null; 
+//			// Open case
+//			if (importType == null) {
+//				contents = TabImport.convertToTbp(StringTools.getPathString(Arrays.asList(f.getParent())), f.getName(), paths);
+////				contents = sb.toString();
+//			}
+//			// Import case
+//			else {
+//				contents = TabImport.convertToTbp(f.getParent(), f.getName(), paths);
+////				contents = TabImport.convertToTbp(p, f, paths);
+////				if (importType.equals(ASCII)) {
+////					contents = TabImport.ascii2tbp(fileContents);
+////				}
+////				else if (importType.equals(TC)) {
+////					contents = TabImport.tc2tbp(fileContents);
+////				}
+//			}
 			// Set JTextAreas contents
 			populateTextArea(StringTools.crlf2lf(contents), getEncodingTextArea());
 //			populateTextArea(handleReturns(contents), getEncodingTextArea());

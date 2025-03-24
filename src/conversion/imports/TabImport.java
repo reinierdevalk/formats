@@ -1,6 +1,7 @@
 package conversion.imports;
 
 import java.io.File;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -82,15 +83,6 @@ public class TabImport {
 
 
 	public static void main(String[] args) {
-		String f = "C:/Users/Reinier/Desktop/test2tbp.mei"; 
-		boolean dev = true;
-		Map<String, String> paths = CLInterface.getPaths(dev);
-		String python = PythonInterface.python2Installed() ? "python3" : "python";
-		// TODO change UTILS_PYTHON_PATH to formats/py ?
-		String psp = StringTools.getPathString(Arrays.asList(paths.get("UTILS_PYTHON_PATH")));
-		String beamedStr = PythonInterface.runPythonFileAsScript(
-			new String[]{python, psp + paths.get("MEI_2_TBP_SCRIPT"), f}
-		);
 	}
 	
 	public static void main2(String[] args) {
@@ -236,7 +228,7 @@ public class TabImport {
 				File f = new File(path + s + TC_EXT);
 				System.out.println(f);
 				String tc = ToolBox.readTextFile(f).trim();
-				tbp = tc2tbp(tc);
+				tbp = tc2tbp(f);
 				ToolBox.storeTextFile(tbp, new File(path + s + Encoding.TBP_EXT));
 			}
 			System.exit(0);
@@ -245,7 +237,7 @@ public class TabImport {
 			for (String s : pieces) {
 				File f = new File(path + s + TAB_EXT);
 				String ascii = ToolBox.readTextFile(f).trim();
-				tbp = ascii2tbp(ascii);
+				tbp = ascii2tbp(f);
 				ToolBox.storeTextFile(tbp, new File(path + s + "XXX" + Encoding.TBP_EXT));
 			}
 		}
@@ -257,7 +249,7 @@ public class TabImport {
 			System.out.println("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
 			System.out.println(f);
 			String tc = ToolBox.readTextFile(f).trim();
-			String tbp = tc2tbp(tc);
+			String tbp = tc2tbp(f);
 			ToolBox.storeTextFile(tbp, new File(outPath + "/" + filename + Encoding.TBP_EXT));
 		}
 	}
@@ -266,24 +258,32 @@ public class TabImport {
 	/**
 	 * Converts the encoding in the given file to <code>.tbp</code>.
 	 *  
-	 * @param path
-	 * @param file
+	 * @param p The path to the file to convert.
+	 * @param f The file to convert.
+	 * @param paths
 	 * @return
 	 */
-	public static String convertToTbp(String path, String file) {
+	public static String convertToTbp(String p, String f, Map<String, String> paths) {
 		Map<String, Function<Object[], String>> map = new HashMap<>();
-		map.put(TAB_EXT, params -> ascii2tbp((String) params[0]));
-		map.put(TC_EXT, params -> tc2tbp((String) params[0]));
-		map.put(Encoding.TBP_EXT, params -> (String) params[0]);
-		map.put(MEIExport.MEI_EXT, params -> mei2tbp((String) params[0]));
-		map.put(MEIExport.XML_EXT, params -> mei2tbp((String) params[0]));
+		map.put(TAB_EXT, params -> ascii2tbp((File) params[0]));
+		map.put(TC_EXT, params -> tc2tbp((File) params[0]));
+		map.put(Encoding.TBP_EXT, params -> ToolBox.readTextFile((File) params[0]));
+		map.put(MEIExport.MEI_EXT, params -> mei2tbp((File) params[0], (String) params[1]));
+		map.put(MEIExport.XML_EXT, params -> mei2tbp((File) params[0], (String) params[1]));
 
-		String ext = ToolBox.splitExt(file)[1];
+		String ext = ToolBox.splitExt(f)[1];
+		String script = null; 
+		if (ext.equals(MEIExport.MEI_EXT) || ext.equals(MEIExport.XML_EXT)) {
+			script = StringTools.getPathString(Arrays.asList(paths.get("FORMATS_PYTHON_PATH"))) + 
+				paths.get("MEI2TBP_SCRIPT");
+		}
+
 		for (String sourceFormat : CLInterface.ALLOWED_FILE_FORMATS) {
 			if (sourceFormat.equals(ext)) {
 				Function<Object[], String> func = map.get(sourceFormat);
 				if (func != null) {
-					return func.apply(new Object[]{ToolBox.readTextFile(new File(path + file))});
+					return func.apply(new Object[]{new File(p + f), script});
+//					return func.apply(new Object[]{ToolBox.readTextFile(new File(p + f))});
 				}
 			}
 		}
@@ -298,7 +298,8 @@ public class TabImport {
 	 * @param tc
 	 * @return
 	 */
-	public static String tc2tbp(String tc) {
+	public static String tc2tbp(File f) {
+		String tc = ToolBox.readTextFile(f);
 		tc = StringTools.crlf2lf(tc);
 
 		Map<Integer, String> tunings = new LinkedHashMap<Integer, String>();
@@ -330,7 +331,7 @@ public class TabImport {
 		}
 
 		// 1. Make encoding string
-		StringBuffer tbpEncoding = getEncoding(tc);
+		StringBuffer tbp = getEncoding(tc);
 
 		// TODO
 		// meterInfo: if converted from non-tbp file: following information in that file should work
@@ -377,7 +378,7 @@ public class TabImport {
 
 		// Make Encoding
 		Encoding enc = new Encoding(
-			createMetadata(metadata, Encoding.METADATA_TAGS) + tbpEncoding.toString(), "", 
+			createMetadata(metadata, Encoding.METADATA_TAGS) + tbp.toString(), "", 
 			Stage.RULES_CHECKED
 		);
 
@@ -385,7 +386,7 @@ public class TabImport {
 //		tbi.forEach(in -> System.out.println(Arrays.asList(in)));
 //		System.exit(0);
 
-		String miStr = createMeterInfoString(tbpEncoding.toString(), tss);
+		String miStr = createMeterInfoString(tbp.toString(), tss);
 
 		StringBuffer metadataStr = 
 			new StringBuffer(createMetadata(metadata, Encoding.METADATA_TAGS));
@@ -394,7 +395,7 @@ public class TabImport {
 //		System.exit(0);
 		
 //		StringBuffer metadataStr = new StringBuffer(Encoding.createMetadata(metadata));
-		return metadataStr.append(tbpEncoding).toString();
+		return metadataStr.append(tbp).toString();
 	}
 
 
@@ -404,13 +405,13 @@ public class TabImport {
 	 * @param ascii
 	 * @return
 	 */
-	public static String ascii2tbp(String ascii) {
+	public static String ascii2tbp(File f) {
+		String ascii = ToolBox.readTextFile(f);
 		ascii = StringTools.crlf2lf(ascii);
 		
 		// Make encoding
 		List<List<String>> systemContents = getSystemContents(getSystems(ascii));
-//		systemContents.get(0).forEach(s -> System.out.println(s));
-		StringBuffer enc = getEncoding(systemContents);
+		StringBuffer tbp = getEncoding(systemContents);
 
 		// Make metadataString
 		String tss = systemContents.get(systemContents.size()-1).get(0);
@@ -419,27 +420,54 @@ public class TabImport {
 			"", // author TODO
 			"", // title TODO
 			"", // source TODO
-			tss, // TabSymbolSet  
-			tuning, // Tuning
-			createMeterInfoString(enc.toString(), tss), // meterinfo 
+			tss,
+			tuning,
+			createMeterInfoString(tbp.toString(), tss),
 			"" // diminution
 		};
 
 		StringBuffer metadataStr = 
 			new StringBuffer(createMetadata(metadata, Encoding.METADATA_TAGS));
 
-		return metadataStr.append(enc).toString();
+		return metadataStr.append(tbp).toString();
 	}
 
 
-	public static String mei2tbp(String mei) {
+	public static String mei2tbp(File f, String script) {
+		String mei = ToolBox.readTextFile(f);
 		mei = StringTools.crlf2lf(mei);
-		return null;
+
+		//  in formats/py/
+		//  in transcriber/py/
+		// beam.py in utils/py/
+		// model-*.py in voice_separation/py/
+		
+		// code/eclipse/
+		//              formats/
+		//                          mei2tbp.py 
+		//              transcriber/
+		//                          diplomat.py
+		//              utils/
+		//                          utils.py
+		//                          beam.py
+		
+		// - make mei2tbp first using diplomat as template
+		// - see what the function overlap is and extract those into utils.py
+		// - properly import functions from utils.py in mei2tbp and diplomat
+		
+		String python = PythonInterface.python2Installed() ? "python3" : "python";
+		String tbp = PythonInterface.runPythonFileAsScript(
+			new String[]{python, script, f.getParent(), f.getName()}
+		);
+		System.out.println(tbp);
+		System.exit(0);
+
+		return tbp;
 	}
 
 
 	private static StringBuffer getEncoding(String tc) {
-		StringBuffer tbpEncoding = new StringBuffer("");
+		StringBuffer tbp = new StringBuffer("");
 		
 		Map<String, String> mensurationSigns = new LinkedHashMap<String, String>();
 		mensurationSigns.put("2:4", Symbol.TWO.getEncoding());
@@ -529,7 +557,7 @@ public class TabImport {
 			}
 			// System break
 			else if (tabword.equals(tcSysBreak)) {
-				if (!tbpEncoding.toString().endsWith("\n")) {
+				if (!tbp.toString().endsWith("\n")) {
 					asTbp += "\n";
 				}
 				asTbp += Symbol.SYSTEM_BREAK_INDICATOR + "\n";
@@ -729,14 +757,15 @@ public class TabImport {
 				asTbp += convertTabword(tabword, false);
 				durCurrRhythmGroup += prevDur;
 			}
-			tbpEncoding.append(asTbp);
+			tbp.append(asTbp);
 			totalDur += durCurrRhythmGroup;
 		}
-		if (!tbpEncoding.toString().endsWith("\n")) {
-			tbpEncoding.append("\n");
+		if (!tbp.toString().endsWith("\n")) {
+			tbp.append("\n");
 		}
-		tbpEncoding.append(Symbol.END_BREAK_INDICATOR);
-		return tbpEncoding;
+		tbp.append(Symbol.END_BREAK_INDICATOR);
+
+		return tbp;
 	}
 
 
@@ -1372,12 +1401,12 @@ public class TabImport {
 	 * @return
 	 */
 	private static StringBuffer getEncoding(List<List<String>> systemContents) {		
+		StringBuffer tbp = new StringBuffer("");
+
 		int numCourses = EMPTY_SEGMENT.trim().length(); 
 //		int numCourses = systemContents.get(0).get(0).length() - 1;
 		
-		String tss = systemContents.get(systemContents.size()-1).get(0);
-		
-		StringBuffer tabPlusEncoding = new StringBuffer("");
+		String tss = systemContents.get(systemContents.size()-1).get(0);		
 		String ss = Symbol.SYMBOL_SEPARATOR;
 		String space = Symbol.SPACE.getEncoding(); 
 		// Per system
@@ -1397,10 +1426,10 @@ public class TabImport {
 				if (!(event.equals(BARLINE_EVENT) || event.equals(REPEAT_DOTS_EVENT))) {
 //					System.out.println("iehievent = " + event);
 					if (!tieActive) {
-						String tabPlusChord;
+						String tbpChord;
 						// MS
 						if (event.contains("/")) {
-							tabPlusChord = MENSURATION_SIGNS.get(event) + ss;
+							tbpChord = MENSURATION_SIGNS.get(event) + ss;
 						}
 						// Chord
 						else {
@@ -1438,9 +1467,9 @@ public class TabImport {
 								tieActive = true; // skip event tied to
 							}
 							
-							tabPlusChord = rs;
+							tbpChord = rs;
 							if (!rs.isEmpty()) { 
-								tabPlusChord += ss;
+								tbpChord += ss;
 							}
 							// Start from lowest course
 							String chordOnly = event.substring(1);
@@ -1455,13 +1484,13 @@ public class TabImport {
 									String s = String.valueOf(currChar);
 									String fret = !SGL_DIGITS.contains(s) ? s : DBL_DIGITS.get(SGL_DIGITS.indexOf(s));
 									String course = String.valueOf(k+1);
-									tabPlusChord += fret + course + ss;
+									tbpChord += fret + course + ss;
 								}
 							}
-//							System.out.println(tabPlusChord);
+//							System.out.println(tbpChord);
 						}
-						tabPlusChord += space + ss;
-						currSystem.append(tabPlusChord);
+						tbpChord += space + ss;
+						currSystem.append(tbpChord);
 					}
 					else {
 						tieActive = false;
@@ -1509,8 +1538,9 @@ public class TabImport {
 			else {
 				currSystem.append(Symbol.END_BREAK_INDICATOR);
 			}
-			tabPlusEncoding.append(currSystem);
+			tbp.append(currSystem);
 		}
-		return tabPlusEncoding;
+
+		return tbp;
 	}
 }

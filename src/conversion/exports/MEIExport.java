@@ -2197,10 +2197,13 @@ public class MEIExport {
 	}
 
 
-	private static List<Object> beam(/*Tablature tab,*/ List<Object> data, List<Integer[]> mi, // dimmid
-		List<Rational[]> tripletOnsetPairs, List<List<Integer>> mismatchInds, Map<String, String> paths, 
-		int numVoices) {
+	private static List<Object> beam(List<Object> data, List<Integer[]> mi, List<Rational[]> tripletOnsetPairs, 
+		List<List<Integer>> mismatchInds, Map<String, String> paths, int numVoices) {
 //		System.out.println(">>> beam() called");
+
+		String psp = StringTools.getPathString(Arrays.asList(paths.get("UTILS_PYTHON_PATH")));
+		String python = PythonInterface.python2Installed() ? "python3" : "python";
+		boolean isWin = CLInterface.isWin();
 
 		// ints and strs are organised per bar, voice, note
 		List<List<List<Integer[]>>> ints = (List<List<List<Integer[]>>>) data.get(0);
@@ -2213,7 +2216,6 @@ public class MEIExport {
 			unbeamed.add(new ArrayList<String>(Arrays.asList(new String[]{"voice=" + i + "\n"}))); // WOENS
 		}
 		// Populate unbeamed
-//		Timeline tla = TAB_AND_TRANS ? tab.getEncoding().getTimelineAgnostic() : null; // dimmid
 		for (int i = 0; i < numBars; i++) {
 			int bar = i + 1;
 			Rational currMeter = Transcription.getMeter(bar, mi);
@@ -2224,32 +2226,39 @@ public class MEIExport {
 				if (verbose) System.out.println("voice = " + j);
 				StringBuilder barListSb = new StringBuilder();
 				barListSb.append("meter='" + currMeter.getNumer() + "/" + currMeter.getDenom() + "'" + "\n"); // WOENS
-				List<String> barList = getBar( // dimmid
-					currBarInts.get(j), currBarStrs.get(j), tripletOnsetPairs, 
-					mismatchInds, j
-					/*, (TAB_AND_TRANS ? tla.getDiminution(bar) : 1)*/
+				List<String> barList = getBar(
+					currBarInts.get(j), currBarStrs.get(j), tripletOnsetPairs, mismatchInds, j
 				);
 				barList.forEach(s -> barListSb.append(s + "\n")); // WOENS
 				unbeamed.get(j).add(barListSb.toString());
 			}
 		}
-		// Store unbeamed as text file // TODO find cleaner solution
-		// NB: the stored file ends with a line break
-		String psp = StringTools.getPathString(Arrays.asList(paths.get("UTILS_PYTHON_PATH")));
-//		String psp = getPythonPath();
-		String fName = psp + "unbeamed.txt";
-		File f = new File(fName);
+		// Convert unbeamed to String
 		StringBuilder sb = new StringBuilder();
 		unbeamed.forEach(l -> l.forEach(sb::append));
-		ToolBox.storeTextFile(sb.toString(), f);
+		String unbeamedStr = sb.toString();
 
-		// 2. Run beaming script; delete stored file
-		// NB: the output of the beaming script does not end with a line break, but 
+		// 2. Run the beaming script. If unbeamedStr's length does not exceed the maximum allowed 
+		// length of all arguments to a Python script combined, it is passed as an arg to the script;
+		// else, it is stored as a text file and loaded by the script
+		// NB: the output of the beaming script does not end with a line break, but
 		// PythonInterface.runPythonFileAsScript() adds one to the end of it
-		String python = PythonInterface.python2Installed() ? "python3" : "python";
-		String beamedStr = PythonInterface.runPythonFileAsScript(
-			new String[]{python, psp + paths.get("BEAM_SCRIPT"), fName}
-		);
+		String beamedStr;		
+		if (unbeamedStr.length() > (isWin ? 32000 : 128000)) {
+			String fName = psp + "unbeamed.txt";
+			File f = new File(fName);
+			// NB: the stored file ends with a line break
+			ToolBox.storeTextFile(unbeamedStr, f);
+			beamedStr = PythonInterface.runPythonFileAsScript(
+				new String[]{python, psp + paths.get("BEAM_SCRIPT"), fName}
+			);
+			f.delete();
+		}
+		else {
+			beamedStr = PythonInterface.runPythonFileAsScript(
+				new String[]{python, psp + paths.get("BEAM_SCRIPT"), unbeamedStr}
+			);
+		}
 
 //		String beamedStr = "";
 //		try {
@@ -2259,7 +2268,10 @@ public class MEIExport {
 //		} catch (IOException e) {
 //			e.printStackTrace();
 //		}
-		f.delete();
+
+//		if (lenLimitPassed) {
+//			f.delete();
+//		}
 
 		// 3. Make beamed, organised per bar, voice (for completion of ints )
 		List<List<List<String>>> beamed = new ArrayList<>();
@@ -4591,7 +4603,7 @@ public class MEIExport {
 				if (strs.get(j)[STRINGS.indexOf("pname")] == null) {
 					rests.add(true);
 				}
-				else {
+	)			else {
 					rests.add(false);
 				}
 				// If the element at index j is a tie: add
