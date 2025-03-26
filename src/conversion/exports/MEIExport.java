@@ -2202,8 +2202,9 @@ public class MEIExport {
 //		System.out.println(">>> beam() called");
 
 		String psp = StringTools.getPathString(Arrays.asList(paths.get("UTILS_PYTHON_PATH")));
-		String python = PythonInterface.python2Installed() ? "python3" : "python";
 		boolean isWin = CLInterface.isWin();
+		String python = PythonInterface.selectPython();
+//		String python = PythonInterface.python2Installed() ? "python3" : "python";
 
 		// ints and strs are organised per bar, voice, note
 		List<List<List<Integer[]>>> ints = (List<List<List<Integer[]>>>) data.get(0);

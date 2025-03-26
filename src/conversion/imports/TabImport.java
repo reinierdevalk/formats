@@ -454,8 +454,9 @@ public class TabImport {
 		// - make mei2tbp first using diplomat as template
 		// - see what the function overlap is and extract those into utils.py
 		// - properly import functions from utils.py in mei2tbp and diplomat
-		
-		String python = PythonInterface.python2Installed() ? "python3" : "python";
+
+		String python = PythonInterface.selectPython();
+//		String python = PythonInterface.python2Installed() ? "python3" : "python";
 		String tbp = PythonInterface.runPythonFileAsScript(
 			new String[]{python, script, f.getParent(), f.getName()}
 		);
