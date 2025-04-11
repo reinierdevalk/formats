@@ -89,7 +89,7 @@ def convertTabGrp(tabGrp: ET.Element, not_type: str, is_beamed: bool): # -> str
 	# Determine TabSymbols
 	event_list = [None, None, None, None, None, None] # first element is lowest-sounding course
 	for elem in tabGrp:
-		if elem.tag == uri_xml + 'note':
+		if elem.tag == f'{uri_mei}note':
 			fret = elem.get('tab.fret')
 			course = elem.get('tab.course')
 			if not_type == NOTATIONTYPES[FLT]:
@@ -123,33 +123,34 @@ xml_id_key = f'{uri_xml}id'
 tree, root = parse_tree(mei_str)
 meiHead = root.find('mei:meiHead', ns)
 music = root.find('mei:music', ns)
-score = music.findall('.//' + uri_xml + 'score')[0]
+score = music.find(f'.//mei:score', ns)
 
-not_type = score.findall('.//' + uri_xml + 'staffDef')[0].get('notationtype')
 
-scoreDefs = score.findall('.//' + uri_xml + 'scoreDef')
+def _find_first_elem_after(index: int, elems_flat: list, tag: str):
+	return next(
+		(elem for elem in elems_flat[index + 1:] if elem.tag == tag), 
+		None
+	)
+
+
+scoreDefs = score.findall(f'.//mei:scoreDef', ns)
 meterSigs = []
 elems_flat = list(score.iter()) # flat list of all elements in document order
-sd_ind = 0
+last_sd_ind = 0
 for scoreDef in scoreDefs:
-	id_ = scoreDef.get(xml_id_key)
-	curr_ms = scoreDef.findall('.//' + uri_xml + 'meterSig') # list
+	curr_ms = scoreDef.find(f'.//mei:meterSig', ns) # None if none found
 	n = None
-	for i, elem in enumerate(elems_flat):
-#	for i in range(sd_ind, len(elems_flat)):
-#		elem = elems_flat[i]	
-		if elem.get(xml_id_key) == id_:
-#			sd_ind = i
-			for next_elem in elems_flat[i+1:]:
-				if next_elem.tag == uri_xml + 'measure':
-					n = next_elem.get('n')
-					break
+	for i in range(last_sd_ind, len(elems_flat)):
+		elem = elems_flat[i]	
+		if elem.get(xml_id_key) == scoreDef.get(xml_id_key):
+			last_sd_ind = i
+			next_measure = _find_first_elem_after(i, elems_flat, f'{uri_mei}measure')
+			n = next_measure.get('n')
 			break
-	meterSigs.append((n, None if len(curr_ms) == 0 else curr_ms[0]))
+	meterSigs.append((n, curr_ms))
 
-print(meterSigs)
+not_type = scoreDefs[0].find(f'.//mei:staffDef', ns).get('notationtype')
 
-FUK
 
 def get_meterSig_key(meterSig: str): # -> str
 	count = meterSig.get('count')
@@ -171,118 +172,34 @@ def get_meterSig_key(meterSig: str): # -> str
 
 tbp = ''
 sections = score.findall('mei:section', ns)
-for i, section in enumerate(sections):
-	# MensurationSign
-	curr_ms = meterSigs[i] 
-	if curr_ms != None:
-		ms_key = get_meterSig_key(curr_ms)
-		tbp += f'{MENSURATION_SIGNS[ms_key]}.>.' 
+
+for section in sections:
 	for measure in section.findall('mei:measure', ns):
-		layer = measure.findall('.//' + uri_xml + 'layer')[0]
+		# MensurationSign
+		n = measure.get('n')
+		has_ms_before = any(item[0] == n for item in meterSigs)
+		if has_ms_before:
+			ms = next(item[1] for item in meterSigs if item[0] == n)
+			if ms != None:
+				ms_key = get_meterSig_key(ms)
+				tbp += f'{MENSURATION_SIGNS[ms_key]}.>.'
+
+		layer = measure.find(f'.//mei:layer', ns)
 		# Possible elements: <tabGrp>, <beam>, <choice> 
 		for elem in layer:
 			print(elem.tag)
 			# <tabGrp>
-			if elem.tag == uri_xml + 'tabGrp':
-#				print(convertTabGrp(elem, not_type, False))
-				pass
+			if elem.tag == uri_mei + 'tabGrp':
+				print('+++++++++')
+				print(convertTabGrp(elem, not_type, False))
 			# <beam>
-			if elem.tag == uri_xml + 'beam':
+			if elem.tag == uri_mei + 'beam':
 				tabGrps = list(elem)
 				for tabGrp in tabGrps:
-#					print(convertTabGrp(tabGrp, not_type, (False if tabGrp == tabGrps[-1] else True)))
-					pass
+					print(convertTabGrp(tabGrp, not_type, (False if tabGrp == tabGrps[-1] else True)))
 			# <choice>
-			if elem.tag == uri_xml + 'choice':
+			if elem.tag == uri_mei + 'choice':
 				print('choice')
-
-REST 
-
-elem_inds = {}
-for i, elem in enumerate(score.iter()):
-    id_ = elem.get(xml_id_key)
-    if id_ is not None:
-        elem_inds[id_] = i
-
-for scoreDef in scoreDefs:
-    id_ = scoreDef.get(xml_id_key)
-	print(id_)
-    if id_ is None:
-        continue  # or raise an error if you expect all to have xml:id
-    idx = elem_inds[id_]
-
-    # Now proceed to find the next <measure>
-    for next_elem in elems_flat[idx + 1:]:
-        if next_elem.tag == uri_xml + 'measure':
-            print(f'First measure after scoreDef {id_} is {next_elem.get("n")}')
-            break
-
-for scoreDef in scoreDefs:
-	print(scoreDef)
-	# Get meterSig
-	curr_ms = scoreDef.findall('.//' + uri_xml + 'meterSig')
-	print(curr_ms)
-
-meter_change_bars = []
-# Iterate over flat list of all elements in document order
-elems_flat = list(score.iter())
-for i, elem in enumerate(elems_flat):
-	if elem.tag == uri_xml + 'scoreDef':
-		# Find the first measure after scoreDef
-		for next_elem in elems_flat[i+1:]:
-			if next_elem.tag == uri_xml + 'measure':
-#				meter_change_bars.append(next_elem.get('n'))
-				print('dsgsdfsfdfd')
-				meterSigs[i] = (next_elem.get('n'), meterSigs[i][1])
-				break
-print(meterSigs)
-print(meter_change_bars)
-
-
-
-meterSigs = []
-#meter_change_bars = []
-for scoreDef in scoreDefs:
-	print(scoreDef)
-	# Get meterSig
-	curr_ms = scoreDef.findall('.//' + uri_xml + 'meterSig')
-	print(curr_ms)
-	fuk = None if len(curr_ms) == 0 else curr_ms[0]
-##	meterSigs.append(None if len(curr_ms) == 0 else curr_ms[0])
-    
-    # Get next <measure> number
-    id_ = scoreDef.get(xml_id_key)
-    if id_ is None:
-        continue  # or raise an error if you expect all to have xml:id
-    idx = elem_inds[id_]
-
-#    # Now proceed to find the next <measure>
-#    for next_elem in elems_flat[idx + 1:]:
-#        if next_elem.tag == uri_xml + 'measure':
-#            print(f'First measure after scoreDef {xml_id_key} is {next_elem.get("n")}')
-#            break
-
-#    ind = elem_inds[scoreDef]
-#    print(elem_inds[id(scoreDef)])
-
-#    n = None
-#    for next_elem in elems_flat[ind + 1:]:
-#        if next_elem.tag == uri_xml + 'measure':
-#            n = next_elem.get('n')
-#            break
-#    meterSigs.append[(None if len(curr_ms) == 0 else curr_ms[0], n)]
-
-#	n = None
-#	for next_elem in elems_flat[idx + 1:]:
-#       if next_elem.tag == uri_xml + 'measure':
-#            print(f'First measure after scoreDef {xml_id_key} is {next_elem.get("n")}')
-#            break
-
-#    meterSigs.append[(n, fuk)]
-
-print(meterSigs)
-ssss
-
 
 
 
