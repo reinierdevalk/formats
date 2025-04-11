@@ -126,9 +126,9 @@ music = root.find('mei:music', ns)
 score = music.find(f'.//mei:score', ns)
 
 
-def _find_first_elem_after(index: int, elems_flat: list, tag: str):
+def _find_first_elem_after(ind: int, elems_flat: list, tag: str):
 	return next(
-		(elem for elem in elems_flat[index + 1:] if elem.tag == tag), 
+		(elem for elem in elems_flat[ind + 1:] if elem.tag == tag), 
 		None
 	)
 
@@ -189,16 +189,15 @@ for section in sections:
 		for elem in layer:
 			print(elem.tag)
 			# <tabGrp>
-			if elem.tag == uri_mei + 'tabGrp':
-				print('+++++++++')
+			if elem.tag == f'{uri_mei}tabGrp':
 				print(convertTabGrp(elem, not_type, False))
 			# <beam>
-			if elem.tag == uri_mei + 'beam':
+			if elem.tag == f'{uri_mei}beam':
 				tabGrps = list(elem)
 				for tabGrp in tabGrps:
 					print(convertTabGrp(tabGrp, not_type, (False if tabGrp == tabGrps[-1] else True)))
 			# <choice>
-			if elem.tag == uri_mei + 'choice':
+			if elem.tag == f'{uri_mei}choice':
 				print('choice')
 
 
