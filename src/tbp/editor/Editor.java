@@ -118,24 +118,18 @@ public class Editor extends JFrame{
 	// https://stackoverflow.com/questions/8852560/how-to-make-popup-window-in-java
 	// try-catch block is only needed when reading from a File using a BufferedReader
 	public static void main(String[] args) {
-		for (int i = 0; i < args.length; i++) {
-			if ("__EMPTY__".equals(args[i])) {
-				args[i] = "";
-			}
-		}
+		// Parse CLI args and set variables
+		List<Object> parsed = CLInterface.parseCLIArgs(args, null);
+		cliOptsVals = (Map<String, String>) parsed.get(0);
+
 		boolean dev = args.length == 0 ? true : args[CLInterface.DEV_IND].equals(String.valueOf(true));
 		String opts = args[CLInterface.OPTS_IND];
 		String defaultVals = args[CLInterface.DEFAULT_VALS_IND];
 		String uov = args[CLInterface.USER_OPTS_VALS_IND];
-		System.err.println(Arrays.asList(args));
 		boolean store = Boolean.parseBoolean(args[4]); // true when called by abtab; false when called by diplomat.py
 		String source = args[5];
 		String destination = args[6];
 		Map<String, String> argPaths = CLInterface.getPaths(dev);
-
-		// Parse CLI args and set variables
-		List<Object> parsed = CLInterface.parseCLIArgs(args, null);
-		cliOptsVals = (Map<String, String>) parsed.get(0);
 
 		// No source and destination provided: convert through editor
 		if (source.equals("") && destination.equals("")) {
