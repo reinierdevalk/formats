@@ -180,11 +180,11 @@ public class Editor extends JFrame{
 //			System.out.println(tbp);
 //			System.exit(0);
 
-			// Source is .tbp
+			// Destination is .tbp
 			if (outputFormat.equals(Encoding.TBP_EXT)) {
 				ToolBox.storeTextFile(tbp, new File(cp + destination));
 			}
-			// Source is .mei, tab, .tc, .xml
+			// Destination is .mei, tab, .tc, .xml
 			else {
 				if (outputFormat.equals(MEIExport.MEI_EXT) || outputFormat.equals(MEIExport.XML_EXT)) {
 					Encoding e = new Encoding(tbp, outputName, Stage.RULES_CHECKED);

@@ -308,7 +308,6 @@ public class MEIExport {
 		mei = mei.replace("version_placeholder", version);
 		mei = mei.replace("input_file_placeholder", "Input file: " + dict[1]);
 		mei = mei.replace("tool_placeholder", dict[2]);
-		
 
 		// 2. Make the <music> and replace in template. The <music> consists of the <score>, 
 		// containing one or more <section>s. Each <section> consists of a <scoreDef> followed 
@@ -322,6 +321,10 @@ public class MEIExport {
 		List<List<String>> tabBars = null;
 		if (ONLY_TAB || TAB_AND_TRANS) {
 			tabBars = getTabBars(tab, numVoices);
+			for (List<String> l : tabBars) {
+				System.out.println(l);
+			}
+//			System.exit(0);
 		}
 		// c. Get all trans bars
 		List<List<String>> transBars = null;
