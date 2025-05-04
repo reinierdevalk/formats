@@ -66,6 +66,55 @@ public class MEIExportTest {
 
 
 	@Test
+	public void testIndentMEISnippet() {
+		List<String> meiList = Arrays.asList(
+			"<scoreDef>",
+			"<staffGrp>",
+			"<staffDef n='1' notationtype='tab.lute.german' lines='3'>",
+			"<clef shape='TAB' line='5' visible='false' />",
+			"<meterSig count='2' sym='cut' unit='2' />",
+			"<tuning>",
+			"<course n='1' oct='4' pname='a' />",
+			"<course n='2' oct='4' pname='e' />",
+			"<course n='3' oct='3' pname='b' />",
+			"<course n='4' oct='3' pname='g' />",
+			"<course n='5' oct='3' pname='d' />",
+			"<course n='6' oct='2' pname='g' />",
+			"</tuning>",
+			"</staffDef>",
+			"</staffGrp>",
+			"</scoreDef>"
+		);
+
+		List<String> expected = Arrays.asList(
+			MEIExport.TAB.repeat(2) + "<scoreDef>",
+			MEIExport.TAB.repeat(3) + "<staffGrp>",
+			MEIExport.TAB.repeat(4) + "<staffDef n='1' notationtype='tab.lute.german' lines='3'>",
+			MEIExport.TAB.repeat(5) + "<clef shape='TAB' line='5' visible='false' />",
+			MEIExport.TAB.repeat(5) + "<meterSig count='2' sym='cut' unit='2' />",
+			MEIExport.TAB.repeat(5) + "<tuning>",
+			MEIExport.TAB.repeat(6) + "<course n='1' oct='4' pname='a' />",
+			MEIExport.TAB.repeat(6) + "<course n='2' oct='4' pname='e' />",
+			MEIExport.TAB.repeat(6) + "<course n='3' oct='3' pname='b' />",
+			MEIExport.TAB.repeat(6) + "<course n='4' oct='3' pname='g' />",
+			MEIExport.TAB.repeat(6) + "<course n='5' oct='3' pname='d' />",
+			MEIExport.TAB.repeat(6) + "<course n='6' oct='2' pname='g' />",
+			MEIExport.TAB.repeat(5) + "</tuning>",
+			MEIExport.TAB.repeat(4) + "</staffDef>",
+			MEIExport.TAB.repeat(3) + "</staffGrp>",
+			MEIExport.TAB.repeat(2) + "</scoreDef>"
+		);
+
+		List<String> actual = MEIExport.indentMEISnippet(meiList, MEIExport.TAB, 2);
+
+		assertEquals(expected.size(), actual.size());
+		for (int i = 0; i < expected.size(); i++) {
+			assertEquals(expected.get(i), actual.get(i));
+		}
+	}
+
+
+	@Test
 	public void testRebarKeyInfo() {
 		Tablature t1 = new Tablature(encodingTestpiece, false);
 		Transcription tr1 = new Transcription(midiTestpiece, encodingTestpiece);
