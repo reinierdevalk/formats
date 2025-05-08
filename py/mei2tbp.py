@@ -168,48 +168,47 @@ def implement_choice(root: ET.Element, choice_ids: list, tag: str):
         elem.remove(choice_elem)
 
 
-def insert_footnote_in_event(choices: list, event: str, lbl: str, 
-							 is_single_tabGrp_in_beam: bool, is_ts_event: bool): # -> str
+def insert_footnote(choices: list, tbp_events: str, lbl: str, is_single_tg_in_beam: bool, 
+					is_ts_event: bool): # -> str
 
 	if (is_ts_event and 'first' in lbl) or not is_ts_event:
 		choice_id = lbl.strip().split()[-1]
 		c = choices[choice_id]
-		alt_events = _handle_alt(c, choices, is_ts_event)
-		# A single <tabGrp> in a <beam> is wrapped directly in <choice> (and not first in 
-		# <beam>), meaning that the MS will not yet be beamed
-		if is_ts_event and is_single_tabGrp_in_beam:
-			ms = alt_events[:alt_events.index('.')]
-			alt_events = alt_events.replace(ms, f'{ms}-')
+		ftnt_events = _handle_alt(c, choices, is_ts_event)
+		# A single <tabGrp> in a <beam> is wrapped directly in <choice> (and not 
+		# first in <beam>), meaning that the MS will not yet be beamed
+		if is_ts_event and is_single_tg_in_beam:
+			ms = ftnt_events[:ftnt_events.index('.')]
+			ftnt_events = ftnt_events.replace(ms, f'{ms}-')
 		# Do not include closing '>.'		
-		alt_events = alt_events[:-2]
-		footnote = f'{{@\'{alt_events}\' {'in source' if TAG == 'corr' else 'corrected'}}}'
+		ftnt_events = ftnt_events[:-2]
+		ftnt = f'{{@\'{ftnt_events}\' {'in source' if TAG == 'corr' else 'corrected'}}}'
 	if is_ts_event and 'following' in lbl:
-		footnote = '{@}'
-	event = event[:-3] + footnote + event[-3:] # -3 is the length of '.>.'
+		ftnt = '{@}'
+	tbp_events = tbp_events[:-3] + ftnt + tbp_events[-3:] # -3 is the length of '.>.'
 
-	return event
+	return tbp_events
 
 
 def _handle_alt(choice: ET.Element, choices: list, is_ts_event: bool): # -> str
-	alt_events = ''
+	tbp_events = ''
 
 	alt = choice.find(f'mei:{'sic' if TAG == 'corr' else 'corr'}', ns)
 	# TS event
 	if is_ts_event:
 		# Possible direct children: <beam>, <tabGrp>, <sb>
-		for j, item in enumerate(list(alt)):
-			if item.tag == f'{uri_mei}beam':
-				alt_events += handle_beam(item, choices)
-			if item.tag == f'{uri_mei}tabGrp':
-				alt_events += convert_tabGrp(item, False)#j != len(alt)-1) 
-			elif item.tag == f'{uri_mei}sb':
-				alt_events += '\n/\n'
+		for j, elem in enumerate(list(alt)):
+			if elem.tag == f'{uri_mei}beam':
+				tbp_events += handle_beam(elem, choices)
+			if elem.tag == f'{uri_mei}tabGrp':
+				tbp_events += convert_tabGrp(elem, False)#j != len(alt)-1) 
+			elif elem.tag == f'{uri_mei}sb':
+				tbp_events += '\n/\n'
 	# MS event
 	else:
-		meterSig_alt = alt.find('.//mei:meterSig', ns)
-		alt_events = convert_meterSig(meterSig_alt)
+		tbp_events = convert_meterSig(alt.find('.//mei:meterSig', ns))
 
-	return alt_events
+	return tbp_events
 
 
 def convert_meterSig(meterSig: str): # -> str
@@ -232,92 +231,108 @@ def convert_meterSig(meterSig: str): # -> str
 
 def convert_tabGrp(tabGrp: ET.Element, is_beamed: bool): # -> str
 	# Determine RhythmSymbol
-	rhythm_symbol = ''
+	rs = ''
 	if tabGrp.find('mei:tabDurSym', ns) is not None:
 		dur = tabGrp.get('dur')
 		dot = '*' if tabGrp.get('dots') is not None else ''
 		beam = '-' if is_beamed else ''
-		rhythm_symbol = f'{DURATIONS[dur]}{dot}{beam}.'  
+		rs = f'{DURATIONS[dur]}{dot}{beam}.'  
 
 	# Determine TabSymbols
-	event_list = [None, None, None, None, None, None] # first element is lowest-sounding course
+	ts_per_course = [None, None, None, None, None, None] # first element is lowest-sounding course
 	for elem in tabGrp:
 		if elem.tag == f'{uri_mei}note':
 			fret = elem.get('tab.fret')
 			course = elem.get('tab.course')
 			if NOT_TYPE == NOTATIONTYPES[FLT]:
-				tab_symbol = f'{"abcdefghikl"[int(fret)]}{course}.'
+				ts = f'{"abcdefghikl"[int(fret)]}{course}.'
 			elif NOT_TYPE == NOTATIONTYPES[GLT]:
-				tab_symbol = f'{NEWSIDLER[int(course)-1][int(fret)]}.'
+				ts = f'{NEWSIDLER[int(course)-1][int(fret)]}.'
 			else:
-				tab_symbol = f'{fret}{course}.'
-			event_list[NUM_COURSES - int(course)] = tab_symbol
+				ts = f'{fret}{course}.'
+			ts_per_course[NUM_COURSES - int(course)] = ts
 	
 	# Make event		
-	tab_symbols = ''
-	for tab_symbol in event_list:
-		if tab_symbol is not None:
-			tab_symbols += tab_symbol
+	tss = ''
+	for ts in ts_per_course:
+		if ts is not None:
+			tss += ts
 
-	return f'{rhythm_symbol}{tab_symbols}>.'
+	return f'{rs}{tss}>.'
 
 
 def handle_beam(beam: ET.Element, choices: list): # -> str
-	b_events = ''
+	tbp_events = ''
 
 	# Possible direct children in <beam>: <tabGrp>, <sb>
 	b_contents = list(beam)
 	for i, elem in enumerate(b_contents):
 		if elem.tag == f'{uri_mei}tabGrp':
-			lbl = elem.get('label')
+			# 1. Make event 
 			is_beamed = i != len(b_contents) - 1
-			ts_event = convert_tabGrp(elem, is_beamed)
+			tbp_event = convert_tabGrp(elem, is_beamed)
+
+			# 2. Insert footnote
+			lbl = elem.get('label')
 			if lbl is not None and '<choice>' in lbl:
 				is_single_tg_in_beam = True if ('(1/1)' in lbl and is_beamed) else False
-				ts_event = insert_footnote_in_event(choices, ts_event, lbl, 
-													is_single_tg_in_beam, True)
-			b_events += ts_event
+				tbp_event = insert_footnote(choices, tbp_event, lbl, is_single_tg_in_beam, True)
+			tbp_events += tbp_event
 		elif elem.tag == f'{uri_mei}sb':
-			b_events += '\n/\n'
+			tbp_events += '\n/\n'
 
-	return b_events
+	return tbp_events
 
 
 def handle_measure(measure: ET.Element, choices: list): # -> str
-	m_events = ''
+	tbp_events = ''
 
+	# 1. Make events
 	# Possible direct children in <layer>: <beam>, <tabGrp>, <sb>
 	layer = measure.find('.//mei:layer', ns)
 	for elem in layer:
 		if elem.tag == f'{uri_mei}beam':
-			m_events += handle_beam(elem, choices)
+			tbp_events += handle_beam(elem, choices)
 		elif elem.tag == f'{uri_mei}tabGrp':
-			lbl = elem.get('label')
-			ts_event = convert_tabGrp(elem, False)
-			if lbl is not None and '<choice>' in lbl:
-				ts_event = insert_footnote_in_event(choices, ts_event, lbl, False, True)
-			m_events += ts_event
+			# 1. Make event
+			tbp_event = convert_tabGrp(elem, False)
+			
+			# 2. Insert footnote
+			tg_lbl = elem.get('label')
+			if tg_lbl is not None and '<choice>' in tg_lbl:
+				tbp_event = insert_footnote(choices, tbp_event, tg_lbl, False, True)
+			tbp_events += tbp_event
 		elif elem.tag == f'{uri_mei}sb':
-			m_events += '\n/\n'
+			tbp_events += '\n/\n'
 	barline = measure.get('right')
 	if barline != 'invis':
-		m_events += f'{BARLINES[barline]}.'
-	m_events += '\n'
+		tbp_events += f'{BARLINES[barline]}.'
+	tbp_events += '\n'
+	
+	# 2. Insert footnote (for whole <measure>) 
+	#    NB Applies only if <choice> contains the whole <measure>, in which 
+	#    case <measure> itself will not contain any further <choice>)
+	m_lbl = measure.get('label') # m_lbl is on <measure>
+	if m_lbl is not None and '<choice>' in m_lbl:
+		tbp_events = insert_footnote(choices, tbp_events, m_lbl, False, False)	
 
-	return m_events
+	return tbp_events
 
 
 def handle_scoreDef(scoreDef: ET.Element, choices: list): # -> str
-	ms_event = ''
+	tbp_event = ''
 
 	meterSig = scoreDef.find('.//mei:meterSig', ns)
 	if meterSig is not None:
-		ms_event = convert_meterSig(meterSig) 
-		lbl = scoreDef.get('label') # lbl is on <scoreDef>: <choice> cannot contain <scoreDef> children 
+		# 1. Make event
+		tbp_event = convert_meterSig(meterSig) 
+		
+		# 2. Insert footnote
+		lbl = scoreDef.get('label') # lbl is on <scoreDef> as <choice> cannot contain <scoreDef> children 
 		if lbl is not None and '<choice>' in lbl:
-			ms_event = insert_footnote_in_event(choices, ms_event, lbl, False, False)
+			tbp_event = insert_footnote(choices, tbp_event, lbl, False, False)
 
-	return ms_event
+	return tbp_event
 
 
 def handle_section(section: ET.Element, choices: list): # -> str
@@ -327,9 +342,9 @@ def handle_section(section: ET.Element, choices: list): # -> str
 	for elem in section:
 		if elem.tag == f'{uri_mei}scoreDef':
 			res += handle_scoreDef(elem, choices)
-		if elem.tag == f'{uri_mei}measure':
+		elif elem.tag == f'{uri_mei}measure':
 			res += handle_measure(elem, choices)
-		if elem.tag == f'{uri_mei}sb':
+		elif elem.tag == f'{uri_mei}sb':
 			res += '/\n'
 
 	return res
@@ -341,12 +356,10 @@ def handle_score(score: ET.Element, choices: list): # -> str
 	# Possible direct children in <score>: <scoreDef>, <section>, <sb>
 	for elem in score:
 		if elem.tag == f'{uri_mei}scoreDef':
-			ms_event = handle_scoreDef(elem, choices)
-			res += ms_event
-		if elem.tag == f'{uri_mei}section':
-			s = handle_section(elem, choices)
-			res += s
-		if elem.tag == f'{uri_mei}sb':
+			res += handle_scoreDef(elem, choices)
+		elif elem.tag == f'{uri_mei}section':
+			res += handle_section(elem, choices)
+		elif elem.tag == f'{uri_mei}sb':
 			res += '/\n'
 
 	return res
