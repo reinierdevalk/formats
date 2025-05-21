@@ -1,10 +1,14 @@
 import copy
 import os
+import random
+import string
 import xml.etree.ElementTree as ET
 from io import StringIO
 from itertools import islice
 from sys import argv
 script, inpath, infile = argv
+
+# TODO clean up imports after making utils module
 
 NUM_COURSES = 6
 
@@ -47,6 +51,29 @@ NEWSIDLER = [['5', 'e', 'k', 'p', 'v', '9', 'e-', 'k-', 'p-', 'v-', '9-'],
 			 ['+', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K']
 			]
 
+LEN_ID = 8 # TODO move to utils module together with duplicate functions w/ diplomat
+TAG = 'corr' # TODO make argument
+#TAG = 'sic'
+
+def _add_unique_id(prefix: str, arg_xml_ids: list): # -> list
+	"""
+	Generates a unique ID with the given prefix and adds it to given list.
+
+	Args:
+		prefix (str): The prefix for the ID.
+		arg_xml_ids (list): The list of existing IDs.
+
+	Returns:
+		list: The updated list of IDs.
+	"""
+	while True:
+		rand_id = ''.join(random.choices(string.ascii_letters + string.digits, k=(LEN_ID - len(prefix))))
+		xml_id = prefix + rand_id
+		if xml_id not in arg_xml_ids:
+			arg_xml_ids.append(xml_id)
+			break
+
+	return arg_xml_ids
 
 
 def handle_namespaces(xml_contents: str): # -> dict
@@ -130,51 +157,132 @@ def implement_choice_inflexible(root: ET.Element, choice_ids: list, tag: str):
         elem.remove(choice_elem)
 
 
+def split_multi_measure_choice(root: ET.Element): # -> None
+	"""
+	Splits any successive <measure>s wrapped in a single <choice> each into their own <choice>, i.e.,
+	
+	<choice>
+		<corr>
+			<measure n='1'/>
+			<measure n='2'/>
+		</corr>
+		<sic>
+			<measure n='1'/>
+			<measure n='2'/>
+		</sic>
+	</choice>
+
+	becomes
+
+	<choice>
+		<corr>
+			<measure n='1'/>
+		</corr>
+		<sic>
+			<measure n='1'/>
+		</sic>
+	</choice>
+	<choice>
+		<corr>
+			<measure n='2'/>
+		</corr>
+		<sic>
+			<measure n='2'/>
+		</sic>
+	</choice>   
+	"""
+	replacements = []
+
+	for parent in root.iter():
+		for i, child in enumerate(list(parent)):
+			if child.tag == f'{uri_mei}choice':
+				corr = child.find('mei:corr', ns)
+				sic = child.find('mei:sic', ns)
+
+				if corr is None or sic is None:
+					continue
+
+				corr_measures = list(corr.findall('mei:measure', ns))
+				sic_measures = list(sic.findall('mei:measure', ns))
+				if len(corr_measures) != len(sic_measures):
+					raise ValueError('Mismatch in number of <measure> elements in <corr> and <sic>')
+
+				choices_split = []
+				for corr_m, sic_m in zip(corr_measures, sic_measures):
+					if corr_m.get('n') != sic_m.get('n'):
+						raise ValueError(f'Mismatch in measure number (@n) values in <corr> and <sic>:\
+										 {corr_m.get('n')} != {sic_m.get('n')}')
+					curr_corr = ET.Element(f'{uri_mei}corr', attrib={**corr.attrib})
+					curr_corr.append(copy.deepcopy(corr_m))
+					curr_sic = ET.Element(f'{uri_mei}sic', attrib={**sic.attrib})
+					curr_sic.append(copy.deepcopy(sic_m))
+					curr_choice = ET.Element(f'{uri_mei}choice', attrib={**child.attrib})					
+					curr_choice.set(xml_id_key, _add_unique_id('c', xml_ids)[-1])
+					curr_choice.append(curr_corr)
+					curr_choice.append(curr_sic)
+					choices_split.append(curr_choice)
+
+				if choices_split:
+					replacements.append((parent, i, child, choices_split))
+
+	# Perform replacements (in reverse to avoid index shifting)
+	for parent, i, choice_comb, choices_split in reversed(replacements):
+		for offset, c in enumerate(choices_split):
+			parent.insert(i + offset, c)
+		parent.remove(choice_comb)
+
+
 def implement_choice(root: ET.Element, choice_ids: list, tag: str):
-    replacements = []
+	replacements = []
 
-    for elem in root.iter():
-        for i, child in enumerate(list(elem)):
-            if child.tag == f'{uri_mei}choice':
-                choice_id = child.get(xml_id_key)
-                if choice_id in choice_ids:
-                    choice_elem = child.find(f'mei:{tag}', ns)
-                    if choice_elem is not None:
-                        # Deepcopy to avoid modifying original
-                        choice_elem_copy = copy.deepcopy(choice_elem)
+	for elem in root.iter():
+		for i, child in enumerate(list(elem)):
+			if child.tag == f'{uri_mei}choice':
+				choice_id = child.get(xml_id_key)
+				if choice_id in choice_ids:
+					choice_elem = child.find(f'mei:{tag}', ns)
+					if choice_elem is not None:
+						# Deepcopy to avoid modifying original
+						choice_elem_copy = copy.deepcopy(choice_elem)
 
-                        # Count total <tabGrp> for label logic
-                        num_tabGrps = len(choice_elem_copy.findall('.//mei:tabGrp', ns))
-                        tabGrp_cnt = 1
+						# Count total <tabGrp> for label logic
+						num_tabGrps = len(choice_elem_copy.findall('.//mei:tabGrp', ns))
+						tabGrp_cnt = 1
 
-                        # Recursively walk all elements and annotate
-                        for sub in choice_elem_copy.iter():
-                            if sub.tag == f'{uri_mei}tabGrp':
-                                pos = 'first' if tabGrp_cnt == 1 else 'following'
-                                sub.set('label', f'{pos} ({tabGrp_cnt}/{num_tabGrps}) <tabGrp> from <choice> with @xml:id {choice_id}')
-                                tabGrp_cnt += 1
-                            elif sub.tag == f'{uri_mei}scoreDef':
-                                sub.set('label', f'<scoreDef> from <choice> with @xml:id {choice_id}')
+						# Recursively walk all elements and annotate
+						lbl_txt = f'from <choice> with @xml:id {choice_id}'
+						for sub in choice_elem_copy.iter():
+							if sub.tag == f'{uri_mei}measure':
+								sub.set('label', f'<measure> {lbl_txt}')
+								break
+							if sub.tag == f'{uri_mei}tabGrp':
+								pos = 'first' if tabGrp_cnt == 1 else 'following'
+								sub.set('label', f'{pos} ({tabGrp_cnt}/{num_tabGrps}) <tabGrp> {lbl_txt}')
+								tabGrp_cnt += 1
+							elif sub.tag == f'{uri_mei}scoreDef':
+								sub.set('label', f'<scoreDef> {lbl_txt}')
 
-                        # We only want to insert the top-level children of <corr>/<sic>
-                        new_elems = list(choice_elem_copy)
+						# We only want to insert the top-level children of <corr>/<sic>
+						new_elems = list(choice_elem_copy)
 
-                        replacements.append((elem, i, child, new_elems))
+						replacements.append((elem, i, child, new_elems))
 
-    # Insert and remove <choice> (in reverse to prevent index shifting)
-    for elem, i, choice_elem, new_elems in reversed(replacements):
-        for offset, new_elem in enumerate(new_elems):
-            elem.insert(i + offset, new_elem)
-        elem.remove(choice_elem)
+	# Insert and remove <choice> (in reverse to avoid index shifting)
+	for elem, i, choice_elem, new_elems in reversed(replacements):
+		for offset, new_elem in enumerate(new_elems):
+			elem.insert(i + offset, new_elem)
+		elem.remove(choice_elem)
 
 
 def insert_footnote(choices: list, tbp_events: str, lbl: str, is_single_tg_in_beam: bool, 
 					is_ts_event: bool): # -> str
 
-	if (is_ts_event and 'first' in lbl) or not is_ts_event:
+	if (is_ts_event and 'first' in lbl) or (is_ts_event and 'measure' in lbl) or not is_ts_event:
 		choice_id = lbl.strip().split()[-1]
 		c = choices[choice_id]
 		ftnt_events = _handle_alt(c, choices, is_ts_event)
+		print('AAAAAAAAAAAA')
+		print(ftnt_events)
 		# A single <tabGrp> in a <beam> is wrapped directly in <choice> (and not 
 		# first in <beam>), meaning that the MS will not yet be beamed
 		if is_ts_event and is_single_tg_in_beam:
@@ -194,14 +302,28 @@ def _handle_alt(choice: ET.Element, choices: list, is_ts_event: bool): # -> str
 	tbp_events = ''
 
 	alt = choice.find(f'mei:{'sic' if TAG == 'corr' else 'corr'}', ns)
+	print('ZZZZ')
+	print(list(alt))
+	# If alt contains a <measure> (as its first and only child): move its content    
+	# (i.e., the content of its <layer>) directly inside alt; remove <measure>
+	if list(alt)[0].tag == f'{uri_mei}measure':
+		measure = list(alt)[0]
+		layer = measure.find('.//mei:layer', ns)
+		for child in list(layer):
+			alt.append(copy.deepcopy(child))
+		alt.remove(measure)
+	print(list(alt))
+
 	# TS event
 	if is_ts_event:
 		# Possible direct children: <beam>, <tabGrp>, <sb>
 		for j, elem in enumerate(list(alt)):
 			if elem.tag == f'{uri_mei}beam':
 				tbp_events += handle_beam(elem, choices)
+				print('beam  :', tbp_events)
 			if elem.tag == f'{uri_mei}tabGrp':
-				tbp_events += convert_tabGrp(elem, False)#j != len(alt)-1) 
+				tbp_events += convert_tabGrp(elem, False)#j != len(alt)-1)
+				print('tabGrp:', tbp_events) 
 			elif elem.tag == f'{uri_mei}sb':
 				tbp_events += '\n/\n'
 	# MS event
@@ -287,6 +409,8 @@ def handle_beam(beam: ET.Element, choices: list): # -> str
 def handle_measure(measure: ET.Element, choices: list): # -> str
 	tbp_events = ''
 
+	print('JA')
+
 	# 1. Make events
 	# Possible direct children in <layer>: <beam>, <tabGrp>, <sb>
 	layer = measure.find('.//mei:layer', ns)
@@ -308,14 +432,17 @@ def handle_measure(measure: ET.Element, choices: list): # -> str
 	if barline != 'invis':
 		tbp_events += f'{BARLINES[barline]}.'
 	tbp_events += '\n'
-	
+	print('JA2')
 	# 2. Insert footnote (for whole <measure>) 
 	#    NB Applies only if <choice> contains the whole <measure>, in which 
 	#    case <measure> itself will not contain any further <choice>)
 	m_lbl = measure.get('label') # m_lbl is on <measure>
 	if m_lbl is not None and '<choice>' in m_lbl:
-		tbp_events = insert_footnote(choices, tbp_events, m_lbl, False, False)	
-
+		print('JA3')
+		print(tbp_events)
+		print('-->' + m_lbl + '<--')
+		tbp_events = insert_footnote(choices, tbp_events, m_lbl, False, True)	
+	
 	return tbp_events
 
 
@@ -343,6 +470,7 @@ def handle_section(section: ET.Element, choices: list): # -> str
 		if elem.tag == f'{uri_mei}scoreDef':
 			res += handle_scoreDef(elem, choices)
 		elif elem.tag == f'{uri_mei}measure':
+			print('measure', elem.get(xml_id_key))
 			res += handle_measure(elem, choices)
 		elif elem.tag == f'{uri_mei}sb':
 			res += '/\n'
@@ -381,8 +509,9 @@ meiHead = root.find('mei:meiHead', ns)
 music = root.find('mei:music', ns)
 score = music.find('.//mei:score', ns)
 
-scoreDefs = score.findall('.//mei:scoreDef', ns)
-NOT_TYPE = scoreDefs[0].find('.//mei:staffDef', ns).get('notationtype')
+# Collect all xml:ids
+global xml_ids
+xml_ids = [elem.attrib[xml_id_key] for elem in root.iter() if xml_id_key in elem.attrib]
 
 #meterSigs = []
 #elems_flat = list(score.iter()) # flat list of all elements in document order
@@ -409,11 +538,15 @@ NOT_TYPE = scoreDefs[0].find('.//mei:staffDef', ns).get('notationtype')
 #corr_sic_ids = [c.find('mei:corr', ns) for c in choicess]
 #choice_idss = [c.get(xml_id_key) for c in choicess]
 
+# Handle <choice>s
+# a. Split multi-measure <choice>s
+split_multi_measure_choice(root)
+#tre = ET.ElementTree(root)
+#tre.write('modified_output.xml', encoding='unicode', xml_declaration=True)
+
+# b. Implement <choice>s
 choices = {c.get(xml_id_key): c for c in score.findall('.//mei:choice', ns)}
 choice_ids = choices.keys()
-
-TAG = 'corr'
-#TAG = 'sic'
 implement_choice(root, choice_ids, TAG)
 
 
@@ -422,14 +555,16 @@ implement_choice(root, choice_ids, TAG)
 
 #for elem in root.iter():
 #	if elem.get('label') != None:
-#		print(elem.get(xml_id_key), elem.get('label'))
-
-
-
+#		print(elem.tag, elem.get(xml_id_key), elem.get('label'))
 
 #sections = score.findall('mei:section', ns)
 
+
+scoreDefs = score.findall('.//mei:scoreDef', ns)
+NOT_TYPE = scoreDefs[0].find('.//mei:staffDef', ns).get('notationtype')
+print('JO')
 tbp_enc = handle_score(score, choices)
+print('JO2')
 print(tbp_enc)
 
 
