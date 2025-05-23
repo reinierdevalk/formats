@@ -1,4 +1,5 @@
 import copy
+import json
 import os
 import random
 import string
@@ -6,6 +7,7 @@ import xml.etree.ElementTree as ET
 from io import StringIO
 from itertools import islice
 from sys import argv
+
 script, inpath, infile = argv
 
 # TODO clean up imports after making utils module
@@ -17,11 +19,27 @@ FLT = 'FLT'
 ILT = 'ILT'
 SLT = 'SLT'
 GLT = 'GLT'
+
+F = 'F'
+F6Eb = 'F6Eb'
+G = 'G'
+G6F = 'G6F'
+A = 'A'
+A6G = 'A6G'
+
 NOTATIONTYPES = {FLT: 'tab.lute.french',
 				 ILT: 'tab.lute.italian',
 				 SLT: 'tab.lute.spanish',
 				 GLT: 'tab.lute.german'
 				}
+# NB Must be the same as in representations.external.Tablature
+TUNINGS = {F   : [('f', 4), ('c', 4), ('g', 3), ('eb', 3), ('bb', 2), ('f', 2)],
+		   F6Eb: [('f', 4), ('c', 4), ('g', 3), ('eb', 3), ('bb', 2), ('eb', 2)],
+		   G   : [('g', 4), ('d', 4), ('a', 3), ('f', 3), ('c', 3), ('g', 2)], 
+		   G6F : [('g', 4), ('d', 4), ('a', 3), ('f', 3), ('c', 3), ('f', 2)], 
+		   A   : [('a', 4), ('e', 4), ('b', 3), ('g', 3), ('d', 3), ('a', 2)], 
+		   A6G : [('a', 4), ('e', 4), ('b', 3), ('g', 3), ('d', 3), ('g', 2)]
+		  }
 # NB Must be the same as in formats.tbp.symbols.Symbol
 MENSURATION_SIGNS = {'2:4': 'M2', '2:4_num': 'M2', 
 					 '3:4': 'M3', '3:4_num': 'M3', '3:4_sym_O': 'MO', 
@@ -54,6 +72,12 @@ NEWSIDLER = [['5', 'e', 'k', 'p', 'v', '9', 'e-', 'k-', 'p-', 'v-', '9-'],
 LEN_ID = 8 # TODO move to utils module together with duplicate functions w/ diplomat
 TAG = 'corr' # TODO make argument
 #TAG = 'sic'
+
+
+def _get_tuning(tuning: ET.Element): # -> str
+	tuning_p_o = [(c.get('pname'), int(c.get('oct'))) for c in tuning.findall('mei:course', ns)]
+	return next((k for k, v in TUNINGS.items() if v == tuning_p_o), None)
+
 
 def _add_unique_id(prefix: str, arg_xml_ids: list): # -> list
 	"""
@@ -113,48 +137,6 @@ def parse_tree(xml_contents: str): # -> Tuple
 	root = tree.getroot()
 
 	return (tree, root)
-
-
-def implement_choice_inflexible(root: ET.Element, choice_ids: list, tag: str):
-    replacements = []
-
-    # First pass: collect changes
-    for elem in root.iter():
-        for i, child in enumerate(list(elem)):
-            if child.tag == f'{uri_mei}choice':
-                choice_id = child.get(xml_id_key)
-                if choice_id in choice_ids:
-                    choice_elem = child.find(f'mei:{tag}', ns)
-                    if choice_elem is not None:
-                        new_elems = []
-                        tabGrp_cnt = 1
-                        num_tabGrps = len(choice_elem.findall('.//mei:tabGrp', ns))
-
-                        for sub in list(choice_elem):
-                            sub_copy = copy.deepcopy(sub)
-                            
-                            if sub_copy.tag == f'{uri_mei}beam':
-                            	for item in sub_copy:
-                            		if item.tag == f'{uri_mei}tabGrp':
-                            			pos = 'first' if tabGrp_cnt == 1 else 'following'
-                            			item.set('label', f'{pos} ({tabGrp_cnt}/{num_tabGrps}) <tabGrp> from <choice> with @xml:id {choice_id}')		
-                            			tabGrp_cnt += 1		
-                            if sub_copy.tag == f'{uri_mei}tabGrp':
-                                pos = 'first' if tabGrp_cnt == 1 else 'following'
-                                sub_copy.set('label', f'{pos} ({tabGrp_cnt}/{num_tabGrps}) <tabGrp> from <choice> with @xml:id {choice_id}')
-                                tabGrp_cnt += 1
-                            if sub_copy.tag == f'{uri_mei}scoreDef':
-                                sub_copy.set('label', f'<scoreDef> from <choice> with @xml:id {choice_id}')
-
-                            new_elems.append(sub_copy)
-
-                        replacements.append((elem, i, child, new_elems))
-
-    # Second pass: process in reverse to avoid index shifting issues
-    for elem, i, choice_elem, new_elems in reversed(replacements):
-        for offset, new_elem in enumerate(new_elems):
-            elem.insert(i + offset, new_elem)
-        elem.remove(choice_elem)
 
 
 def split_multi_measure_choice(root: ET.Element): # -> None
@@ -252,9 +234,6 @@ def implement_choice(root: ET.Element, choice_ids: list, tag: str):
 						# Recursively walk all elements and annotate
 						lbl_txt = f'from <choice> with @xml:id {choice_id}'
 						for sub in choice_elem_copy.iter():
-							if sub.tag == f'{uri_mei}measure':
-								sub.set('label', f'<measure> {lbl_txt}')
-								break
 							if sub.tag == f'{uri_mei}tabGrp':
 								pos = 'first' if tabGrp_cnt == 1 else 'following'
 								sub.set('label', f'{pos} ({tabGrp_cnt}/{num_tabGrps}) <tabGrp> {lbl_txt}')
@@ -262,7 +241,7 @@ def implement_choice(root: ET.Element, choice_ids: list, tag: str):
 							elif sub.tag == f'{uri_mei}scoreDef':
 								sub.set('label', f'<scoreDef> {lbl_txt}')
 
-						# We only want to insert the top-level children of <corr>/<sic>
+						# Only insert the top-level children of <corr>/<sic>
 						new_elems = list(choice_elem_copy)
 
 						replacements.append((elem, i, child, new_elems))
@@ -277,12 +256,10 @@ def implement_choice(root: ET.Element, choice_ids: list, tag: str):
 def insert_footnote(choices: list, tbp_events: str, lbl: str, is_single_tg_in_beam: bool, 
 					is_ts_event: bool): # -> str
 
-	if (is_ts_event and 'first' in lbl) or (is_ts_event and 'measure' in lbl) or not is_ts_event:
+	if (is_ts_event and 'first' in lbl) or not is_ts_event:
 		choice_id = lbl.strip().split()[-1]
 		c = choices[choice_id]
 		ftnt_events = _handle_alt(c, choices, is_ts_event)
-		print('AAAAAAAAAAAA')
-		print(ftnt_events)
 		# A single <tabGrp> in a <beam> is wrapped directly in <choice> (and not 
 		# first in <beam>), meaning that the MS will not yet be beamed
 		if is_ts_event and is_single_tg_in_beam:
@@ -302,17 +279,15 @@ def _handle_alt(choice: ET.Element, choices: list, is_ts_event: bool): # -> str
 	tbp_events = ''
 
 	alt = choice.find(f'mei:{'sic' if TAG == 'corr' else 'corr'}', ns)
-	print('ZZZZ')
-	print(list(alt))
-	# If alt contains a <measure> (as its first and only child): move its content    
-	# (i.e., the content of its <layer>) directly inside alt; remove <measure>
-	if list(alt)[0].tag == f'{uri_mei}measure':
-		measure = list(alt)[0]
-		layer = measure.find('.//mei:layer', ns)
+
+	# If alt contains <measure> as its first (and only) direct child: move this 
+	# <measure>'s <layer> content as direct children of alt and remove it from alt 
+	first_child = list(alt)[0]
+	if first_child.tag == f'{uri_mei}measure':
+		layer = first_child.find('.//mei:layer', ns)
 		for child in list(layer):
 			alt.append(copy.deepcopy(child))
-		alt.remove(measure)
-	print(list(alt))
+		alt.remove(first_child)
 
 	# TS event
 	if is_ts_event:
@@ -320,10 +295,8 @@ def _handle_alt(choice: ET.Element, choices: list, is_ts_event: bool): # -> str
 		for j, elem in enumerate(list(alt)):
 			if elem.tag == f'{uri_mei}beam':
 				tbp_events += handle_beam(elem, choices)
-				print('beam  :', tbp_events)
 			if elem.tag == f'{uri_mei}tabGrp':
 				tbp_events += convert_tabGrp(elem, False)#j != len(alt)-1)
-				print('tabGrp:', tbp_events) 
 			elif elem.tag == f'{uri_mei}sb':
 				tbp_events += '\n/\n'
 	# MS event
@@ -409,9 +382,6 @@ def handle_beam(beam: ET.Element, choices: list): # -> str
 def handle_measure(measure: ET.Element, choices: list): # -> str
 	tbp_events = ''
 
-	print('JA')
-
-	# 1. Make events
 	# Possible direct children in <layer>: <beam>, <tabGrp>, <sb>
 	layer = measure.find('.//mei:layer', ns)
 	for elem in layer:
@@ -432,16 +402,16 @@ def handle_measure(measure: ET.Element, choices: list): # -> str
 	if barline != 'invis':
 		tbp_events += f'{BARLINES[barline]}.'
 	tbp_events += '\n'
-	print('JA2')
-	# 2. Insert footnote (for whole <measure>) 
-	#    NB Applies only if <choice> contains the whole <measure>, in which 
-	#    case <measure> itself will not contain any further <choice>)
-	m_lbl = measure.get('label') # m_lbl is on <measure>
-	if m_lbl is not None and '<choice>' in m_lbl:
-		print('JA3')
-		print(tbp_events)
-		print('-->' + m_lbl + '<--')
-		tbp_events = insert_footnote(choices, tbp_events, m_lbl, False, True)	
+
+#	# 2. Insert footnote (for whole <measure>) 
+#	#    NB Applies only if <choice> contains the whole <measure>, in which 
+#	#    case <measure> itself will not contain any further <choice>)
+#	m_lbl = measure.get('label') # m_lbl is on <measure>
+#	if m_lbl is not None and '<choice>' in m_lbl:
+#		print('JA3')
+#		print(tbp_events)
+#		print('-->' + m_lbl + '<--')
+#		tbp_events = insert_footnote(choices, tbp_events, m_lbl, False, True)	
 	
 	return tbp_events
 
@@ -470,7 +440,6 @@ def handle_section(section: ET.Element, choices: list): # -> str
 		if elem.tag == f'{uri_mei}scoreDef':
 			res += handle_scoreDef(elem, choices)
 		elif elem.tag == f'{uri_mei}measure':
-			print('measure', elem.get(xml_id_key))
 			res += handle_measure(elem, choices)
 		elif elem.tag == f'{uri_mei}sb':
 			res += '/\n'
@@ -490,7 +459,33 @@ def handle_score(score: ET.Element, choices: list): # -> str
 		elif elem.tag == f'{uri_mei}sb':
 			res += '/\n'
 
-	return res
+	return res + '//'
+
+
+def get_meterSigs(score: ET.Element, scoreDefs: list): # -> list
+	meterSigs = []
+	elems_flat = list(score.iter()) # flat list of all elements in document order
+	last_sd_ind = 0
+	for scoreDef in scoreDefs:
+		curr_ms = scoreDef.find('.//mei:meterSig', ns) # None if none found
+		n = None
+		for i in range(last_sd_ind, len(elems_flat)):
+			elem = elems_flat[i]	
+			if elem.get(xml_id_key) == scoreDef.get(xml_id_key):
+				last_sd_ind = i
+				next_measure = _find_first_elem_after(i, elems_flat, f'{uri_mei}measure')
+				n = next_measure.get('n')
+				break
+		meterSigs.append((n, curr_ms))
+
+	return meterSigs
+
+
+def _find_first_elem_after(ind: int, elems_flat: list, tag: str):
+	return next(
+		(elem for elem in elems_flat[ind + 1:] if elem.tag == tag), 
+		None
+	)
 
 
 #if __name__ == "__main__":
@@ -513,20 +508,9 @@ score = music.find('.//mei:score', ns)
 global xml_ids
 xml_ids = [elem.attrib[xml_id_key] for elem in root.iter() if xml_id_key in elem.attrib]
 
-#meterSigs = []
-#elems_flat = list(score.iter()) # flat list of all elements in document order
-#last_sd_ind = 0
-#for scoreDef in scoreDefs:
-#	curr_ms = scoreDef.find('.//mei:meterSig', ns) # None if none found
-#	n = None
-#	for i in range(last_sd_ind, len(elems_flat)):
-#		elem = elems_flat[i]	
-#		if elem.get(xml_id_key) == scoreDef.get(xml_id_key):
-#			last_sd_ind = i
-#			next_measure = _find_first_elem_after(i, elems_flat, f'{uri_mei}measure')
-#			n = next_measure.get('n')
-#			break
-#	meterSigs.append((n, curr_ms))
+
+
+
 
 #choices = []
 #for choice in root.findall('.//mei:choice', ns):
@@ -550,6 +534,9 @@ choice_ids = choices.keys()
 implement_choice(root, choice_ids, TAG)
 
 
+scoreDefs = score.findall('.//mei:scoreDef', ns)
+NOT_TYPE = scoreDefs[0].find('.//mei:staffDef', ns).get('notationtype')
+
 #for elem in root.iter():
 #	print(elem, elem.get(xml_id_key))
 
@@ -560,12 +547,56 @@ implement_choice(root, choice_ids, TAG)
 #sections = score.findall('mei:section', ns)
 
 
-scoreDefs = score.findall('.//mei:scoreDef', ns)
-NOT_TYPE = scoreDefs[0].find('.//mei:staffDef', ns).get('notationtype')
-print('JO')
+
+
 tbp_enc = handle_score(score, choices)
-print('JO2')
-print(tbp_enc)
+work = meiHead.find('.//mei:workList', ns).find('.//mei:work', ns)
+auth = work.find('.//mei:composer', ns)
+author = auth.text if auth is not None else ''
+tit = work.find('.//mei:title', ns)
+title = tit.text if tit is not None else ''
+source = ''
+tss = next((k for k, v in NOTATIONTYPES.items() if v == NOT_TYPE), None)
+tun = score.find('.//mei:tuning', ns)
+tuning = _get_tuning(tun) if tun is not None else G
+meterSigs = get_meterSigs(score, scoreDefs)
+
+meterinfo = ''
+last_bar = int(score.findall('.//mei:measure', ns)[-1].get('n'))
+for i, ms in enumerate(meterSigs):
+	is_last = i == len(meterSigs) - 1  
+	start_bar = int(ms[0])
+	meter = ms[1]
+	meter = 'None' if meter == None else f'{meter.get('count')}/{meter.get('unit')}'
+	end_bar = (int(meterSigs[i + 1][0]) - 1) if not is_last else last_bar
+	meterinfo += f'{meter} ({start_bar}-{end_bar}){'; ' if not is_last else ''}'
+diminution = '1'
+
+print(author)
+print(title)
+print(source)
+print(tss)
+print(tuning)
+print(meterinfo)
+print(diminution)
+
+#print(meterinfo)
+#print('n/a' if author.text is None else author.text)
+#print('n/a' if title.text is None else title.text)
+#print('deh')
+
+res = [author, title, source, tss, tuning, meterinfo, diminution, tbp_enc]
+print(json.dumps(res))
+#print(tbp_enc)
+
+# {AUTHOR:ABONDANTE, Julio} 		<composer>
+# {TITLE:mais mamignone} 			<title>
+# {SOURCE:Buch (1548), ff. x-y}		n/a
+
+# {TABSYMBOLSET:Italian}			from NOT_TYPE	
+# {TUNING:A}						from TUNINGS
+# {METER_INFO:2/2 (1-50)}			construct
+# {DIMINUTION:1}					1
 
 
 # tbp events: TS event, RS event, rest event, MS event, barline event
@@ -996,8 +1027,6 @@ def handle_section_OLD(section: ET.Element, choices: list, tbp: str): # -> str
 	return tbp	
 
 
-
-
 def get_meterSig_key(meterSig: str): # -> str
 	count = meterSig.get('count')
 	unit = meterSig.get('unit')
@@ -1023,6 +1052,48 @@ def find_parent(root, child):
 				return parent
 
 	return None
+
+
+def implement_choice_inflexible(root: ET.Element, choice_ids: list, tag: str):
+    replacements = []
+
+    # First pass: collect changes
+    for elem in root.iter():
+        for i, child in enumerate(list(elem)):
+            if child.tag == f'{uri_mei}choice':
+                choice_id = child.get(xml_id_key)
+                if choice_id in choice_ids:
+                    choice_elem = child.find(f'mei:{tag}', ns)
+                    if choice_elem is not None:
+                        new_elems = []
+                        tabGrp_cnt = 1
+                        num_tabGrps = len(choice_elem.findall('.//mei:tabGrp', ns))
+
+                        for sub in list(choice_elem):
+                            sub_copy = copy.deepcopy(sub)
+                            
+                            if sub_copy.tag == f'{uri_mei}beam':
+                            	for item in sub_copy:
+                            		if item.tag == f'{uri_mei}tabGrp':
+                            			pos = 'first' if tabGrp_cnt == 1 else 'following'
+                            			item.set('label', f'{pos} ({tabGrp_cnt}/{num_tabGrps}) <tabGrp> from <choice> with @xml:id {choice_id}')		
+                            			tabGrp_cnt += 1		
+                            if sub_copy.tag == f'{uri_mei}tabGrp':
+                                pos = 'first' if tabGrp_cnt == 1 else 'following'
+                                sub_copy.set('label', f'{pos} ({tabGrp_cnt}/{num_tabGrps}) <tabGrp> from <choice> with @xml:id {choice_id}')
+                                tabGrp_cnt += 1
+                            if sub_copy.tag == f'{uri_mei}scoreDef':
+                                sub_copy.set('label', f'<scoreDef> from <choice> with @xml:id {choice_id}')
+
+                            new_elems.append(sub_copy)
+
+                        replacements.append((elem, i, child, new_elems))
+
+    # Second pass: process in reverse to avoid index shifting issues
+    for elem, i, choice_elem, new_elems in reversed(replacements):
+        for offset, new_elem in enumerate(new_elems):
+            elem.insert(i + offset, new_elem)
+        elem.remove(choice_elem)
 
 
 def implement_choice_SHIT(root: ET.Element, choice_ids: list, tag: str):
@@ -1065,6 +1136,7 @@ def implement_choice_SHIT(root: ET.Element, choice_ids: list, tag: str):
 
 						# Remove the original <choice> element
 						elem.remove(child)
+
 
 def implement_choice_DOESNT_WORK(root: ET.Element, choice_ids: list, tag: str): # -> None
 	for elem in root.iter():
@@ -1121,12 +1193,6 @@ def implement_choice_DOESNT_WORK(root: ET.Element, choice_ids: list, tag: str): 
 						# Remove the original <choice> element
 						elem.remove(child)
 
-
-def _find_first_elem_after(ind: int, elems_flat: list, tag: str):
-	return next(
-		(elem for elem in elems_flat[ind + 1:] if elem.tag == tag), 
-		None
-	)
 
 
 

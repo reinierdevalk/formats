@@ -460,7 +460,12 @@ public class TabImport {
 		String tbp = PythonInterface.runPythonFileAsScript(
 			new String[]{python, script, f.getParent(), f.getName()}
 		);
+		System.out.println("JAHAA");
 		System.out.println(tbp);
+//		List<String> res = StringTools.parseJSONString(tbp);
+//		System.out.println(res.get(0));
+//		System.out.println(res.get(1));
+//		System.out.println(res.get(2));
 		System.exit(0);
 
 		return tbp;
