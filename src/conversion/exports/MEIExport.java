@@ -2318,13 +2318,13 @@ public class MEIExport {
 			ToolBox.storeTextFile(unbeamedStr, f);
 			beamedStr = PythonInterface.runPythonFileAsScript(
 				new String[]{python, psp + paths.get("BEAM_SCRIPT"), fName}
-			);
+			).get(0);
 			f.delete();
 		}
 		else {
 			beamedStr = PythonInterface.runPythonFileAsScript(
 				new String[]{python, psp + paths.get("BEAM_SCRIPT"), unbeamedStr}
-			);
+			).get(0);
 		}
 
 //		String beamedStr = "";

@@ -457,18 +457,22 @@ public class TabImport {
 
 		String python = PythonInterface.selectPython();
 //		String python = PythonInterface.python2Installed() ? "python3" : "python";
-		String tbp = PythonInterface.runPythonFileAsScript(
+		List<String> res = PythonInterface.runPythonFileAsScript(
 			new String[]{python, script, f.getParent(), f.getName()}
 		);
 		System.out.println("JAHAA");
-		System.out.println(tbp);
-//		List<String> res = StringTools.parseJSONString(tbp);
-//		System.out.println(res.get(0));
-//		System.out.println(res.get(1));
-//		System.out.println(res.get(2));
+//		System.out.println(tbp);
+		System.out.println(res.get(0));
+		System.out.println(res.get(1));
+		System.out.println(res.get(2));
+		System.out.println(res.get(3));
+		System.out.println(res.get(4));
+		System.out.println(res.get(5));
+		System.out.println(res.get(6));
+		System.out.println(res.get(7));
 		System.exit(0);
 
-		return tbp;
+		return null;
 	}
 
 

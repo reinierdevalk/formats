@@ -572,21 +572,20 @@ for i, ms in enumerate(meterSigs):
 	meterinfo += f'{meter} ({start_bar}-{end_bar}){'; ' if not is_last else ''}'
 diminution = '1'
 
-print(author)
-print(title)
-print(source)
-print(tss)
-print(tuning)
-print(meterinfo)
-print(diminution)
+#print(author)
+#print(title)
+#print(source)
+#print(tss)
+#print(tuning)
+#print(meterinfo)
+#print(diminution)
 
 #print(meterinfo)
 #print('n/a' if author.text is None else author.text)
 #print('n/a' if title.text is None else title.text)
 #print('deh')
 
-res = [author, title, source, tss, tuning, meterinfo, diminution, tbp_enc]
-print(json.dumps(res))
+print(json.dumps([author, title, source, tss, tuning, meterinfo, diminution, tbp_enc]))
 #print(tbp_enc)
 
 # {AUTHOR:ABONDANTE, Julio} 		<composer>
