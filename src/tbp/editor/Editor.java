@@ -8,10 +8,7 @@ import java.awt.LayoutManager;
 import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -382,7 +379,7 @@ public class Editor extends JFrame{
 			// Add JMenu with JMenuItems
 			else {
 				JMenu mm = new JMenu(s);
-				for (String ss : (s.equals("Import") ? Arrays.asList(TabImport.TAB_EXT, TabImport.TC_EXT) : 
+				for (String ss : (s.equals("Import") ? Arrays.asList(TabImport.TAB_EXT, TabImport.TC_EXT, MEIExport.MEI_EXT) : 
 					Arrays.asList(TabImport.TAB_EXT, MEIExport.MEI_EXT))) {
 					JMenuItem mi = new JMenuItem(EXTENSIONS.get(ss));
 					mi.addActionListener(defineActionListener(s, ss));

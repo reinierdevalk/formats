@@ -386,7 +386,7 @@ public class TabImport {
 //		tbi.forEach(in -> System.out.println(Arrays.asList(in)));
 //		System.exit(0);
 
-		String miStr = createMeterInfoString(tbp.toString(), tss);
+//		String miStr = createMeterInfoString(tbp.toString(), tss);
 
 		StringBuffer metadataStr = 
 			new StringBuffer(createMetadata(metadata, Encoding.METADATA_TAGS));
@@ -422,9 +422,12 @@ public class TabImport {
 			"", // source TODO
 			tss,
 			tuning,
-			createMeterInfoString(tbp.toString(), tss),
+			"", // meterInfo
+//			createMeterInfoString(tbp.toString(), tss),
 			"" // diminution
 		};
+		
+//		String mi = createMeterInfoString(tbp.toString(), tss);
 
 		StringBuffer metadataStr = 
 			new StringBuffer(createMetadata(metadata, Encoding.METADATA_TAGS));
@@ -443,36 +446,35 @@ public class TabImport {
 		// model-*.py in voice_separation/py/
 		
 		// code/eclipse/
-		//              formats/
+		//              formats/py
 		//                          mei2tbp.py 
-		//              transcriber/
+		//              transcriber/py
 		//                          diplomat.py
-		//              utils/
+		//              utils/py
 		//                          utils.py
 		//                          beam.py
 		
-		// - make mei2tbp first using diplomat as template
 		// - see what the function overlap is and extract those into utils.py
 		// - properly import functions from utils.py in mei2tbp and diplomat
 
 		String python = PythonInterface.selectPython();
-//		String python = PythonInterface.python2Installed() ? "python3" : "python";
 		List<String> res = PythonInterface.runPythonFileAsScript(
 			new String[]{python, script, f.getParent(), f.getName()}
 		);
-		System.out.println("JAHAA");
-//		System.out.println(tbp);
-		System.out.println(res.get(0));
-		System.out.println(res.get(1));
-		System.out.println(res.get(2));
-		System.out.println(res.get(3));
-		System.out.println(res.get(4));
-		System.out.println(res.get(5));
-		System.out.println(res.get(6));
-		System.out.println(res.get(7));
-		System.exit(0);
+		
+		String[] metadata = new String[]{
+			res.get(0), res.get(1), res.get(2),
+			TabSymbolSet.getTabSymbolSet(null, res.get(3)).getName(), 
+			res.get(4), 
+			res.get(5).contains("None") ? "" : res.get(5), 
+			res.get(5).contains("None") ? "" : res.get(6)
+		};
+		StringBuffer metadataStr = new StringBuffer(
+			createMetadata(metadata, Encoding.METADATA_TAGS)
+		);
 
-		return null;
+		return metadataStr.append(res.get(7)).toString();
+//		return null;
 	}
 
 
