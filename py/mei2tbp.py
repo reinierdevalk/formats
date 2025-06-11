@@ -3,9 +3,6 @@ import json
 import os
 import sys
 import xml.etree.ElementTree as ET
-#from itertools import islice
-#from sys import argv
-
 
 # Ensure that Python can find .py files in utils/py/ regardless of where the script
 # is run from by adding the path holding the code (<lib_path>) to sys.path
@@ -16,12 +13,10 @@ lib_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../utils'
 if lib_path not in sys.path:
 	sys.path.insert(0, lib_path)
 
-
 from py.constants import *
-from py.utils import get_tuning, add_unique_id, handle_namespaces, parse_tree, write_xml, print_all_elements, print_all_labelled_elements
-
-_, inpath, infile = sys.argv
-
+from py.utils import (get_tuning, add_unique_id, handle_namespaces, parse_tree, get_main_MEI_elements,
+					  collect_xml_ids, find_first_elem_after, write_xml, print_all_elements, 
+					  print_all_labelled_elements)
 
 # NB Must be the same as in formats.tbp.symbols.Symbol
 MENSURATION_SIGNS = {'2:4': 'M2', '2:4_num': 'M2', 
@@ -51,9 +46,7 @@ NEWSIDLER = [['5', 'e', 'k', 'p', 'v', '9', 'e-', 'k-', 'p-', 'v-', '9-'],
 			 ['1', 'a', 'f', 'l', 'q', 'x', 'a-', 'f-', 'l-', 'q-', 'x-'],
 			 ['+', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K']
 			]
-
 NUM_COURSES = 6
-LEN_ID = 8 # TODO move to utils module together with duplicate functions w/ diplomat
 TAG = 'corr' # TODO make argument
 #TAG = 'sic'
 URI_MEI = None
@@ -61,6 +54,8 @@ URI_XML = None
 XML_ID_KEY = None
 NOT_TYPE = None
 xml_ids = None
+
+_, inpath, infile = sys.argv
 
 
 def split_multi_measure_choice(root: ET.Element): # -> None
@@ -386,7 +381,23 @@ def handle_score(score: ET.Element, choices: list): # -> str
 	return res + '//'
 
 
-def get_meterSigs(score: ET.Element): # -> list
+def get_meterinfo_and_diminution_str(score: ET.Element): # -> tuple
+	mi = [] 
+	dim = []
+
+	meterSigs = _get_meterSigs(score)
+	measures = score.findall('.//mei:measure', ns)
+	for i, (bar, ms) in enumerate(meterSigs):
+		start_bar = int(bar)
+		end_bar = int(meterSigs[i + 1][0]) - 1 if i < (len(meterSigs) - 1) else int(measures[-1].get('n'))
+		meter = f'{ms.get('count')}/{ms.get('unit')}' if ms is not None else 'None'
+		mi.append(f'{meter} ({start_bar}-{end_bar})')
+		dim.append('1')
+
+	return '; '.join(mi), '; '.join(dim)
+
+
+def _get_meterSigs(score: ET.Element): # -> list
 	meterSigs = []
 	elems_flat = list(score.iter()) # flat list of all elements in document order
 	scoreDefs = score.findall('.//mei:scoreDef', ns)
@@ -398,34 +409,12 @@ def get_meterSigs(score: ET.Element): # -> list
 			elem = elems_flat[i]	
 			if elem.get(XML_ID_KEY) == scoreDef.get(XML_ID_KEY):
 				last_sd_ind = i
-				next_measure = _find_first_elem_after(i, elems_flat, f'{URI_MEI}measure')
+				next_measure = find_first_elem_after(i, elems_flat, f'{URI_MEI}measure')
 				n = next_measure.get('n')
 				break
 		meterSigs.append((n, curr_ms))
 
 	return meterSigs
-
-
-def _find_first_elem_after(ind: int, elems_flat: list, tag: str):
-	return next(
-		(e for e in elems_flat[ind + 1:] if e.tag == tag), None
-	)
-
-
-def get_meterinfo_and_diminution_str(score: ET.Element): # -> tuple
-	mi = [] 
-	dim = []
-
-	meterSigs = get_meterSigs(score)
-	measures = score.findall('.//mei:measure', ns)
-	for i, (bar, ms) in enumerate(meterSigs):
-		start_bar = int(bar)
-		end_bar = int(meterSigs[i + 1][0]) - 1 if i < (len(meterSigs) - 1) else int(measures[-1].get('n'))
-		meter = f'{ms.get('count')}/{ms.get('unit')}' if ms is not None else 'None'
-		mi.append(f'{meter} ({start_bar}-{end_bar})')
-		dim.append('1')
-
-	return '; '.join(mi), '; '.join(dim)
 
 
 if __name__ == "__main__":
@@ -460,13 +449,15 @@ if __name__ == "__main__":
 
 	# Get the tree, root (<mei>), and main MEI elements (<meiHead>, <score>)
 	tree, root = parse_tree(mei_str)
-	meiHead = root.find('mei:meiHead', ns)
-	music = root.find('mei:music', ns)
+	meiHead, music = get_main_MEI_elements(root, ns)
+#	meiHead = root.find('mei:meiHead', ns)
+#	music = root.find('mei:music', ns)
 	score = music.find('.//mei:score', ns)
 	NOT_TYPE = score.find('.//mei:staffDef', ns).get('notationtype')
 
 	# Collect all xml:ids
-	xml_ids = [elem.attrib[XML_ID_KEY] for elem in root.iter() if XML_ID_KEY in elem.attrib]
+	xml_ids = collect_xml_ids(root, XML_ID_KEY)
+#	xml_ids = [elem.attrib[XML_ID_KEY] for elem in root.iter() if XML_ID_KEY in elem.attrib]
 
 	# Handle <choice>s
 	check_xml = False
@@ -489,6 +480,7 @@ if __name__ == "__main__":
 	tbp_str = handle_score(score, choices)
 
 	# Extract metadata
+	# TODO to method
 	work = meiHead.find('.//mei:workList', ns).find('.//mei:work', ns)
 	composer = work.find('.//mei:composer', ns)
 	title = work.find('.//mei:title', ns)
@@ -503,580 +495,3 @@ if __name__ == "__main__":
 	# Serialise into JSON-formatted string and print
 	res = [author_str, title_str, source_str, tss_str, tuning_str, meterinfo_str, diminution_str, tbp_str]
 	print(json.dumps(res))
-
-
-########################################################################
-
-# Handle <sections>
-# Possible direct children in <section>: <scoreDef>, <measure> (possibly within <choice>), <sb>
-# TODO make arg_
-def handle_section_OLD(section: ET.Element, choices: list, tbp: str): # -> str
-	num_add_corr_events = 0
-
-	for elem_sec in section:
-		# 1. <section> element is <scoreDef> 
-		if elem_sec.tag == f'{URI_MEI}scoreDef':
-			ms_event = handle_scoreDef(elem_sec, choices)
-			tbp += ms_event
-		# 2. <section> element is <measure>
-		if elem_sec.tag == f'{URI_MEI}measure':
-
-#			print('M E A S U R E', elem_sec.get('n'))
-#			measure = elem_sec
-#			m_lbl = measure.get('label')
-#			if m_lbl is not None and '<choice>' in m_lbl:
-#-#				print('<measure> is', m_lbl)
-#				pass
-			m_event = handle_measure(elem_sec, choices, not_type)
-			print()
-			
-			# Get <layer>
-			layer = measure.find('.//mei:layer', ns)
-			# Possible elements in <layer>: <beam>, <tabGrp>, <sb>
-			for elem_lay in layer:
-				# 2.1. <layer> element is <beam>
-				if elem_lay.tag == f'{URI_MEI}beam':
-					beam = elem_lay
-					# Possible elements in <beam>: <tabGrp>, <sb>
-					beam_events = handle_beam(beam, choices)
-#					# Do not include closing '>.'
-#					beam_events = beam_events[:-2]
-					
-					###############
-#					b_lbl = beam.get('label')
-##-#					print('B E A M', beam.get(XML_ID_KEY))
-#					beam_events = ''
-#					# Possible elements in <beam>: <tabGrp>, <sb>
-#					beam_contents = list(beam)
-#					for i, elem_beam in enumerate(beam_contents):
-#						# 2.1.1. <beam> element is <tabGrp>
-#						if elem_beam.tag == f'{URI_MEI}tabGrp':
-#							tg_lbl = elem_beam.get('label')
-##-#							print('T A B G R P  in  B E A M', elem_beam.get(XML_ID_KEY))
-#							tabGrp_event = convert_tabGrp(elem_beam, not_type, i != len(beam_contents)-1)
-##							tabGrp_event = convert_tabGrp(elem_beam, not_type, elem_beam != beam_contents[-1])
-#							if tg_lbl is not None and '<choice>' in tg_lbl:
-#								if 'first' in tg_lbl:
-##-#									print('<tabGrp> is', tg_lbl)
-#									choice_id = tg_lbl.strip().split()[-1]
-#									c = choices[choice_id]
-#									if TAG == 'corr':
-#										alt = c.find('mei:sic', ns)									
-#										# Possible elements in <sic>: <tabGrp>
-#										tabGrp_event_footnote = ''
-#										for j, item in enumerate(list(alt)):
-#											tabGrp_event_footnote += convert_tabGrp(item, not_type, j != len(alt)-1)[:-2] # do not include closing '>.'
-#										footnote = f'{{@\'{tabGrp_event_footnote}\' in source}}'
-#										tabGrp_event = tabGrp_event[:-3] + footnote + tabGrp_event[-3:] # -3 is the length of '.>.'
-##-#										print(tabGrp_event)
-#								if 'following' in tg_lbl:
-#									tabGrp_event = tabGrp_event[:-3] + '{@}' + tabGrp_event[-3:] # -3 is the length of '.>.'
-#							beam_events += tabGrp_event
-#					
-#						# 2.1.2 <beam> element is <sb>
-#						elif elem_beam.tag == f'{URI_MEI}sb':
-#							beam_events += '\n/\n'
-					###############
-#					print('beam_events :', beam_events)
-					tbp += beam_events
-
-				# 2.2. <layer> element is <tabGrp>
-				elif elem_lay.tag == f'{URI_MEI}tabGrp':
-					tabGrp = elem_lay
-					tg_lbl = tabGrp.get('label')
-#					print('T A B G R P', tabGrp.get(XML_ID_KEY))
-					tabGrp_event = convert_tabGrp(tabGrp, not_type, False) 
-					if tg_lbl is not None and '<choice>' in tg_lbl:
-						if 'first' in tg_lbl:
-							print('i am the first', elem_lay.get(XML_ID_KEY))
-#							print('<tabGrp> is', tg_lbl)
-							choice_id = tg_lbl.strip().split()[-1]
-							c = choices[choice_id]
-							if TAG == 'corr':
-								alt = c.find('mei:sic', ns)									
-								# Possible elements in <sic>: <beam>, <tabGrp>
-								tabGrp_event_footnote = ''
-								for i, item in enumerate(list(alt)):
-									if item.tag == f'{URI_MEI}beam':
-										# Possible elements in <beam>: <tabGrp>, <sb>
-										tabGrp_event_footnote += handle_beam(item, choices)
-#										for j, itemitem in enumerate(list(item)):
-#											tabGrp_event_footnote += handle_beam(itemitem, choices)	
-									elif item.tag == f'{URI_MEI}tabGrp':
-										tabGrp_event_footnote += convert_tabGrp(item, not_type, False)
-										
-								# Do not include closing '>.'	
-								tabGrp_event_footnote = tabGrp_event_footnote[:-2]
-#										tabGrp_event_footnote += convert_tabGrp(item, not_type, i != len(alt)-1)[:-2] # do not include closing '>.'
-								footnote = f'{{@\'{tabGrp_event_footnote}\' in source}}'
-								tabGrp_event = tabGrp_event[:-3] + footnote + tabGrp_event[-3:] # -3 is the length of '.>.'			
-						if 'following' in tg_lbl:
-							print('i follow', elem_lay.get(XML_ID_KEY))
-							tabGrp_event = tabGrp_event[:-3] + '{@}' + tabGrp_event[-3:] # -3 is the length of '.>.'
-#					print('tabGrp_event:', tabGrp_event)
-					tbp += tabGrp_event 
-
-				# 2.3. <layer> element is <sb>
-				elif elem_lay.tag == f'{URI_MEI}sb':
-#					sb = elem_lay
-					tbp += '\n/\n'
-
-#					# Footnote case					
-#					if b_lbl is not None and '<choice>' in b_lbl:
-#						print('<beam> is', b_lbl)
-#						choice_id = b_lbl.strip().split()[-1]
-#						c = choices[choice_id]
-#						if TAG == 'corr':
-#							alt = c.find('mei:sic', ns)
-#							print(alt.find('mei:beam', ns))
-#							ss
-#							# If alt also has <beam>
-#
-#							# If alt has no <beam>
-#
-#							# Possible elements in <sic>: <tabGrp>
-#							beam_contents = list(beam)
-#							for i, tabGrp_beam in enumerate(alt):
-#								add_beam = False if tabGrp_beam == beam_contents[-1] else True
-#								tbp_event_footnote += convert_tabGrp(tabGrp_beam, not_type, add_beam)[:-2] # do not include closing '>.'
-#									
-#								# In the tbp, any corr events following the first corr event must 
-#								# be followed by an empty footnote {@} (see MeiExport, getTabBar())
-#								num_add_corr_events = (len(c.find('mei:corr', ns).findall('.//mei:tabGrp', ns))) - 1
-#								print('=================', num_add_corr_events)
-#
-#					# If <beam> is in <choice>: make footnote here
-#					# Else, make it inside loop below
-
-#					beam_contents = list(beam)
-#					# Possible elements in <beam>: <tabGrp> (possibly within <choice>), <sb>
-#					for elem_beam in beam_contents:
-#						# 2.1.1 <beam> element is <tabGrp>
-#						if elem_beam.tag == f'{URI_MEI}tabGrp':
-#							tabGrp_beamed = elem_beam
-#							print('IS TABGRP IN BEAM', tabGrp_beamed.get(XML_ID_KEY))
-#							add_beam = False if tabGrp_beamed == beam_contents[-1] else True
-#
-#							tbp_event = convert_tabGrp(tabGrp_beamed, not_type, add_beam)
-#							print(tbp_event)
-#							# If appropriate: make footnote
-#							t_lbl = tabGrp_beamed.get('label')
-#							if t_lbl is not None and '<choice>' in t_lbl: # or b_lbl is not None and '<choice>' in b_lbl
-#								print('<tabGrp> is', t_lbl)
-#								choice_id = t_lbl.strip().split()[-1]
-#								c = choices[choice_id]
-#								tbp_event_footnote = ''
-#								if TAG == 'corr':
-#									alt = c.find('mei:sic', ns)									
-#									# Possible elements in <sic>: <tabGrp>
-#									for item in alt:
-#										tbp_event_footnote += convert_tabGrp(item, not_type, add_beam)[:-2] # do not include closing '>.'
-#									
-#									# In the tbp, any corr events following the first corr event must 
-#									# be followed by an empty footnote {@} (see MeiExport, getTabBar())
-#									num_add_corr_events = (len(c.find('mei:corr', ns).findall('.//mei:tabGrp', ns))) - 1
-#									print('=================', num_add_corr_events)
-#								elif TAG == 'sic':
-#									alt = c.find('mei:corr', ns)
-#								footnote = f'{{@\'{tbp_event_footnote}\' in source}}'
-#
-#								tbp_event = tbp_event[:-3] + footnote + tbp_event[-3:] # -3 is the length of '.>.'
-#							print(tbp_event)
-#							tbp += tbp_event
-
-#						# 2.1.2 <beam> element is <sb>
-#						if elem_beam.tag == f'{URI_MEI}sb':
-#							tbp += '\n/\n'
-				
-
-			barline = measure.get('right')
-			if barline != 'invis':
-				tbp += f'{BARLINES[barline]}.'
-			tbp += '\n'
-		# 3. <section> element is <sb>
-		if elem_sec.tag == f'{URI_MEI}sb':
-#			sb = elem_sec
-			tbp += '/\n'
-
-	return tbp
-
-
-def convert_beam_OLD(beam: ET.Element): # -> str
-	beam_contents = list(beam)
-	
-	res = ''
-	# Possible elements in <beam>: <tabGrp> (possibly within <choice>), <sb>
-	for elem_beam in beam_contents:
-		# <beam> element is <tabGrp>
-		if elem_beam.tag == f'{URI_MEI}tabGrp':
-			tabGrp_beamed = elem_beam
-			print('IS TABGRP IN BEAM', tabGrp_beamed.get(XML_ID_KEY))
-			add_beam = False if tabGrp_beamed == beam_contents[-1] else True
-
-			res += convert_tabGrp(tabGrp_beamed, not_type, add_beam)
-#			print(tbp_event)
-			
-#			# If appropriate: make footnote
-#			t_lbl = tabGrp_beamed.get('label')
-#			if t_lbl is not None and '<choice>' in t_lbl: # or b_lbl is not None and '<choice>' in b_lbl
-#				print('<tabGrp> is', t_lbl)
-#				choice_id = t_lbl.strip().split()[-1]
-#				c = choices[choice_id]
-#				tbp_event_footnote = ''
-#				if TAG == 'corr':
-#					alt = c.find('mei:sic', ns)									
-#					# Possible elements in <sic>: <tabGrp>
-#					for item in alt:
-#						tbp_event_footnote += convert_tabGrp(item, not_type, add_beam)[:-2] # do not include closing '>.'
-#								
-#						# In the tbp, any corr events following the first corr event must 
-#						# be followed by an empty footnote {@} (see MeiExport, getTabBar())
-#						num_add_corr_events = (len(c.find('mei:corr', ns).findall('.//mei:tabGrp', ns))) - 1
-#						print('=================', num_add_corr_events)
-#				elif TAG == 'sic':
-#					alt = c.find('mei:corr', ns)
-#					footnote = f'{{@\'{tbp_event_footnote}\' in source}}'
-#
-#					tbp_event = tbp_event[:-3] + footnote + tbp_event[-3:] # -3 is the length of '.>.'
-#				print(tbp_event)
-			tbp += tbp_event
-
-		# 2.2.2 <beam> element is <sb>
-		if elem_beam.tag == f'{URI_MEI}sb':
-			res += '\n/\n'
-
-	return res
-
-
-#			# Get any MensurationSign
-#			measure_is_preceded_by_ms = any(item[0] == n for item in meterSigs)
-#			print(measure_is_preceded_by_ms)
-#			if measure_is_preceded_by_ms:
-#				ms = next(item[1] for item in meterSigs if item[0] == n)
-#				if ms != None:
-#					ms_key = get_meterSig_key(ms)
-#					mens_sig = f'{MENSURATION_SIGNS[ms_key]}.>.' 
-#					
-#					tbp += mens_sig
-
-def handle_section_OLD(section: ET.Element, choices: list, tbp: str): # -> str
-	num_add_corr_events = 0
-
-	for elem_sec in section:
-		# 1. <section> element is <scoreDef>
-		if elem_sec.tag == f'{URI_MEI}scoreDef':
-			scoreDef = elem_sec 
-			meterSig = scoreDef.find('.//mei:meterSig', ns)
-			ms_lbl = meterSig.get('label')
-			print('M E T E R S I G')
-			ms_event = '' if meterSig == None else convert_meterSig(meterSig)
-			
-			if ms_lbl is not None and '<choice>' in ms_lbl:
-				print('<meterSig> is', ms_lbl)
-				choice_id = ms_lbl.strip().split()[-1]
-				c = choices[choice_id]
-				if TAG == 'corr':
-					alt = c.find('mei:sic', ns)									
-					# Possible elements in <sic>: <meterSig>
-					for item in alt:
-						ms_event_footnote = convert_meterSig(item)[:-2] # do not include closing '>.'
-					footnote = f'{{@\'{ms_event_footnote}\' in source}}'
-					ms_event = ms_event[:-3] + footnote + ms_event[-3:] # -3 is the length of '.>.'				
-			tbp += ms_event
-		# 2. <section> element is <measure>
-		if elem_sec.tag == f'{URI_MEI}measure':
-			measure = elem_sec
-			print('M E A S U R E', measure.get('n'))
-
-			# If appropriate: make footnote
-			m_lbl = measure.get('label')
-			if m_lbl is not None and '<choice>' in m_lbl:
-				print('<measure> is', m_lbl)
-
-			# Possible elements in <layer>: <tabGrp>, <beam> (both possibly within <choice>), <sb>
-			layer = measure.find('.//mei:layer', ns)
-			for elem_lay in layer:
-				# 2.2. <layer> element is <beam>
-				if elem_lay.tag == f'{URI_MEI}beam':
-					beam = elem_lay
-					b_lbl = beam.get('label')
-					print('B E A M', beam.get(XML_ID_KEY))
-					print(b_lbl)
-					beam_events = ''
-
-					# Normal case
-					# Possible elements in <beam>: <tabGrp>, <sb>
-					for item in list(beam):
-						print(item)
-						if item.tag == f'{URI_MEI}tabGrp':
-							beam_events += convert_tabGrp(item, not_type, item != list(beam)[-1])
-						elif item.tag == f'{URI_MEI}sb':
-							beam_events += '\n/\n'
-					print(beam_events)
-
-					# Footnote case					
-					if b_lbl is not None and '<choice>' in b_lbl:
-						print('<beam> is', b_lbl)
-						choice_id = b_lbl.strip().split()[-1]
-						c = choices[choice_id]
-						if TAG == 'corr':
-							alt = c.find('mei:sic', ns)
-							print(alt.find('mei:beam', ns))
-							ss
-							# If alt also has <beam>
-
-							# If alt has no <beam>
-
-							# Possible elements in <sic>: <tabGrp>
-							beam_contents = list(beam)
-							for i, tabGrp_beam in enumerate(alt):
-								add_beam = False if tabGrp_beam == beam_contents[-1] else True
-								tbp_event_footnote += convert_tabGrp(tabGrp_beam, not_type, add_beam)[:-2] # do not include closing '>.'
-									
-								# In the tbp, any corr events following the first corr event must 
-								# be followed by an empty footnote {@} (see MeiExport, getTabBar())
-								num_add_corr_events = (len(c.find('mei:corr', ns).findall('.//mei:tabGrp', ns))) - 1
-								print('=================', num_add_corr_events)
-
-					# If <beam> is in <choice>: make footnote here
-					# Else, make it inside loop below
-
-					beam_contents = list(beam)
-					# Possible elements in <beam>: <tabGrp> (possibly within <choice>), <sb>
-					for elem_beam in beam_contents:
-						# 2.2.1 <beam> element is <tabGrp>
-						if elem_beam.tag == f'{URI_MEI}tabGrp':
-							tabGrp_beamed = elem_beam
-							print('IS TABGRP IN BEAM', tabGrp_beamed.get(XML_ID_KEY))
-							add_beam = False if tabGrp_beamed == beam_contents[-1] else True
-
-							tbp_event = convert_tabGrp(tabGrp_beamed, not_type, add_beam)
-							print(tbp_event)
-							# If appropriate: make footnote
-							t_lbl = tabGrp_beamed.get('label')
-							if t_lbl is not None and '<choice>' in t_lbl: # or b_lbl is not None and '<choice>' in b_lbl
-								print('<tabGrp> is', t_lbl)
-								choice_id = t_lbl.strip().split()[-1]
-								c = choices[choice_id]
-								tbp_event_footnote = ''
-								if TAG == 'corr':
-									alt = c.find('mei:sic', ns)									
-									# Possible elements in <sic>: <tabGrp>
-									for item in alt:
-										tbp_event_footnote += convert_tabGrp(item, not_type, add_beam)[:-2] # do not include closing '>.'
-									
-									# In the tbp, any corr events following the first corr event must 
-									# be followed by an empty footnote {@} (see MeiExport, getTabBar())
-									num_add_corr_events = (len(c.find('mei:corr', ns).findall('.//mei:tabGrp', ns))) - 1
-									print('=================', num_add_corr_events)
-								elif TAG == 'sic':
-									alt = c.find('mei:corr', ns)
-								footnote = f'{{@\'{tbp_event_footnote}\' in source}}'
-
-								tbp_event = tbp_event[:-3] + footnote + tbp_event[-3:] # -3 is the length of '.>.'
-							print(tbp_event)
-							tbp += tbp_event
-
-						# 2.2.2 <beam> element is <sb>
-						if elem_beam.tag == f'{URI_MEI}sb':
-							tbp += '\n/\n'
-				
-				# 2.1. <layer> element is <tabGrp>
-				elif elem_lay.tag == f'{URI_MEI}tabGrp':
-					print('IS TABGRP', elem_lay.get(XML_ID_KEY))
-					tabGrp = elem_lay
-					tbp += convert_tabGrp(tabGrp, not_type, False)
-
-					# If appropriate: make footnote
-					t_lbl = tabGrp.get('label')
-					print(t_lbl)
-#					if t_lbl is not None and '<choice>' in t_lbl:
-#						print('tabGrp> is', t_lbl)
-#						choice_id = t_lbl.strip().split()[-1]
-#						print(choice_id)
-
-				# 2.3. <layer> element is <sb>
-				elif elem_lay.tag == f'{URI_MEI}sb':
-#					sb = elem_lay
-					tbp += '\n/\n'
-			barline = measure.get('right')
-			if barline != 'invis':
-				tbp += f'{BARLINES[barline]}.'
-			tbp += '\n'
-		# 3. <section> element is <sb>
-		if elem_sec.tag == f'{URI_MEI}sb':
-#			sb = elem_sec
-			tbp += '/\n'
-
-	return tbp	
-
-
-def get_meterSig_key(meterSig: str): # -> str
-	count = meterSig.get('count')
-	unit = meterSig.get('unit')
-	form = meterSig.get('form')
-	sym = meterSig.get('sym')
-
-	# @count, @unit
-	ms_key = f'{count}:{unit}'
-	# @form='num'
-	if form is not None:
-		ms_key += f'_{form}'
-	# @sym='cut', @sym='common'
-	if sym is not None:
-		ms_key += f'_{sym}'
-
-	return ms_key	
-
-
-def find_parent(root, child):
-	for parent in root.iter():
-		for elem in parent:
-			if elem is child:
-				return parent
-
-	return None
-
-
-def implement_choice_inflexible(root: ET.Element, choice_ids: list, tag: str):
-    replacements = []
-
-    # First pass: collect changes
-    for elem in root.iter():
-        for i, child in enumerate(list(elem)):
-            if child.tag == f'{URI_MEI}choice':
-                choice_id = child.get(XML_ID_KEY)
-                if choice_id in choice_ids:
-                    choice_elem = child.find(f'mei:{tag}', ns)
-                    if choice_elem is not None:
-                        new_elems = []
-                        tabGrp_cnt = 1
-                        num_tabGrps = len(choice_elem.findall('.//mei:tabGrp', ns))
-
-                        for sub in list(choice_elem):
-                            sub_copy = copy.deepcopy(sub)
-                            
-                            if sub_copy.tag == f'{URI_MEI}beam':
-                            	for item in sub_copy:
-                            		if item.tag == f'{URI_MEI}tabGrp':
-                            			pos = 'first' if tabGrp_cnt == 1 else 'following'
-                            			item.set('label', f'{pos} ({tabGrp_cnt}/{num_tabGrps}) <tabGrp> from <choice> with @xml:id {choice_id}')		
-                            			tabGrp_cnt += 1		
-                            if sub_copy.tag == f'{URI_MEI}tabGrp':
-                                pos = 'first' if tabGrp_cnt == 1 else 'following'
-                                sub_copy.set('label', f'{pos} ({tabGrp_cnt}/{num_tabGrps}) <tabGrp> from <choice> with @xml:id {choice_id}')
-                                tabGrp_cnt += 1
-                            if sub_copy.tag == f'{URI_MEI}scoreDef':
-                                sub_copy.set('label', f'<scoreDef> from <choice> with @xml:id {choice_id}')
-
-                            new_elems.append(sub_copy)
-
-                        replacements.append((elem, i, child, new_elems))
-
-    # Second pass: process in reverse to avoid index shifting issues
-    for elem, i, choice_elem, new_elems in reversed(replacements):
-        for offset, new_elem in enumerate(new_elems):
-            elem.insert(i + offset, new_elem)
-        elem.remove(choice_elem)
-
-
-def implement_choice_SHIT(root: ET.Element, choice_ids: list, tag: str):
-	for elem in root.iter():
-		for i, child in enumerate(list(elem)):
-			if child.tag == f'{URI_MEI}choice':
-				choice_id = child.get(XML_ID_KEY)
-				if choice_id in choice_ids:
-					choice_elem = child.find(f'mei:{tag}', ns) # <corr> or <sic>
-					if choice_elem is not None:
-						choice_elem_copy = copy.deepcopy(choice_elem)
-
-						# Count all tabGrps
-						num_tabGrps = len(choice_elem_copy.findall('.//mei:tabGrp', ns))
-						tabGrp_cnt = 1
-
-						# Process the copied subtree with beam tracking
-						def label_elements(elem, inside_beam=False):
-							nonlocal tabGrp_cnt
-							if elem.tag == f'{URI_MEI}beam':
-								inside_beam = True
-							if elem.tag == f'{URI_MEI}tabGrp':
-								b = ', beamed, ' if inside_beam else ' '
-								pos = 'first' if tabGrp_cnt == 1 else 'following'
-								elem.set('label', f'{pos} ({tabGrp_cnt}/{num_tabGrps}) <tabGrp> from <choice> with @xml:id {choice_id}')
-#								elem.set('label', f'<tabGrp> {tabGrp_cnt}/{num_tabGrps}{b}from <choice> with @xml:id {choice_id}')
-								tabGrp_cnt += 1
-#							if elem.tag == f'{URI_MEI}meterSig':
-#								elem.set('label', f'<meterSig> from <choice> with @xml:id {choice_id}')
-							if elem.tag == f'{URI_MEI}scoreDef':
-								elem.set('label', f'<scoreDef> from <choice> with @xml:id {choice_id}')
-							for child_elem in elem:
-								label_elements(child_elem, inside_beam)
-
-						label_elements(choice_elem_copy)
-
-						# Insert top-level children of <corr> or <sic> copy
-						for offset, e in enumerate(list(choice_elem_copy)):
-							elem.insert(i + offset, e)
-
-						# Remove the original <choice> element
-						elem.remove(child)
-
-
-def implement_choice_DOESNT_WORK(root: ET.Element, choice_ids: list, tag: str): # -> None
-	for elem in root.iter():
-		for i, child in enumerate(list(elem)): # use list() to safely modify
-			if child.tag == f'{URI_MEI}choice':
-				choice_id = child.get(XML_ID_KEY)
-				if choice_id in choice_ids:
-					# choice_elem is <corr> or <sic>
-					choice_elem = child.find(f'mei:{tag}', ns)
-					if choice_elem is not None:
-						print('C H O I C E')
-						# Insert all children at the position of the <choice> element
-						choice_elem_contents = list(choice_elem) # use list() to safely modify
-						num_tabGrps = len(choice_elem.findall('.//mei:tabGrp', ns))
-						tabGrp_cnt = 1
-						# For each child
-#						num_beamed_tabGrps = 0
-#						for j, choice_elem_child in enumerate(islice(choice_elem.iter(), 1, None)): # iter() starts w/ choice_elem itself
-						for j, choice_elem_child in enumerate(choice_elem_contents):
-							choice_elem_child_copy = copy.deepcopy(choice_elem_child)
-							print(choice_elem_child_copy.tag)
-
-#							if choice_elem_child_copy.tag == f'{URI_MEI}beam':
-#								num_beamed_tabGrps = len(choice_elem_child_copy.findall('.//mei:tabGrp', ns))
-			
-							if choice_elem_child_copy.tag == f'{URI_MEI}tabGrp':
-#								print("BLA")
-#								print(num_beamed_tabGrps)
-#								b = ''
-#								if num_beamed_tabGrps > 0:
-##									print('jepperdepep')
-#									b = ', beamed, '
-#									num_beamed_tabGrps -= 1
-								pos = 'first' if tabGrp_cnt == 1 else 'following'
-								choice_elem_child_copy.set('label', f'{pos} ({tabGrp_cnt}/{num_tabGrps}) <tabGrp> from <choice> with @xml:id {choice_id}')
-#								choice_elem_child_copy.set('label', f'tabGrp {tabGrp_cnt}/{num_tabGrps}{b}from <choice> with @xml:id {choice_id}')
-								tabGrp_cnt += 1	
-#							# Add label to each <tabGrp> and each <meterSig>
-#							for e in choice_elem_child_copy.iter():
-#								if e.tag == f'{URI_MEI}tabGrp':
-#									b = ''
-#									b = ', beamed, '
-#									e.set('label', f'tabGrp {tabGrp_cnt}/{num_tabGrps}{b}from <choice> with @xml:id {choice_id}')
-#									tabGrp_cnt += 1
-#								if e.tag == f'{URI_MEI}meterSig':
-#									e.set('label', f'1/1 from <choice> with @xml:id {choice_id}')
-
-							if choice_elem_child_copy.tag == f'{URI_MEI}meterSig':
-								choice_elem_child_copy.set('label', f'1/1 from <choice> with @xml:id {choice_id}')
-							if choice_elem_child_copy.tag == f'{URI_MEI}scoreDef':
-								choice_elem_child_copy.set('label', f'<scoreDef> from <choice> with @xml:id {choice_id}')
-							
-							elem.insert(i + j, choice_elem_child_copy)
-						# Remove the original <choice> element
-						elem.remove(child)
-
-
-
-

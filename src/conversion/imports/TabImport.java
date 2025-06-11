@@ -458,9 +458,21 @@ public class TabImport {
 		// - properly import functions from utils.py in mei2tbp and diplomat
 
 		String python = PythonInterface.selectPython();
+//fuk		System.out.println(python);
+//fuk		System.out.println(script);
+//fuk		System.out.println(f.getParent());
+//fuk		System.out.println(f.getName());
 		List<String> res = PythonInterface.runPythonFileAsScript(
 			new String[]{python, script, f.getParent(), f.getName()}
 		);
+		
+//fuk		System.out.println(res.get(0));
+//fuk		System.out.println(res.get(1));
+//fuk		System.out.println(res.get(2));
+//fuk		System.out.println(res.get(3));
+//fuk		System.out.println(res.get(4));
+//fuk		System.out.println(res.get(5));
+//fuk		System.out.println(res.get(6));
 		
 		String[] metadata = new String[]{
 			res.get(0), res.get(1), res.get(2),
@@ -472,6 +484,8 @@ public class TabImport {
 		StringBuffer metadataStr = new StringBuffer(
 			createMetadata(metadata, Encoding.METADATA_TAGS)
 		);
+		
+//fuk		System.out.println(metadataStr.toString());
 
 		return metadataStr.append(res.get(7)).toString();
 //		return null;
