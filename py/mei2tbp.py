@@ -18,6 +18,8 @@ from py.utils import (get_tuning, add_unique_id, handle_namespaces, parse_tree, 
 					  collect_xml_ids, find_first_elem_after, write_xml, print_all_elements, 
 					  print_all_labelled_elements)
 
+_, in_file, in_path = sys.argv
+
 # NB Must be the same as in formats.tbp.symbols.Symbol
 MENSURATION_SIGNS = {'2:4': 'M2', '2:4_num': 'M2', 
 					 '3:4': 'M3', '3:4_num': 'M3', '3:4_sym_O': 'MO', 
@@ -52,12 +54,165 @@ TAG = 'corr' # TODO make argument
 URI_MEI = None
 URI_XML = None
 XML_ID_KEY = None
-NOT_TYPE = None
-xml_ids = None
-
-_, inpath, infile = sys.argv
+XML_IDS = None
+TYPE = None
 
 
+# Helper functions -->
+def insert_footnote(choices: list, tbp: str, lbl: str, is_single_tg_in_beam: bool, 
+					is_ts_event: bool): # -> str
+
+	if (is_ts_event and 'first' in lbl) or not is_ts_event:
+		choice_id = lbl.strip().split()[-1]
+		c = choices[choice_id]
+		ftnt_events = _handle_alt(c, choices, is_ts_event)
+		# A single <tabGrp> in a <beam> is wrapped directly in <choice> (and not 
+		# first in <beam>), meaning that the MS will not yet be beamed
+		if is_ts_event and is_single_tg_in_beam:
+			ms = ftnt_events[:ftnt_events.index('.')]
+			ftnt_events = ftnt_events.replace(ms, f'{ms}-')
+		# Do not include closing '>.'		
+		ftnt_events = ftnt_events[:-2]
+		ftnt = f'{{@\'{ftnt_events}\' {'in source' if TAG == 'corr' else 'corrected'}}}'
+	if is_ts_event and 'following' in lbl:
+		ftnt = '{@}'
+	tbp = tbp[:-3] + ftnt + tbp[-3:] # -3 is the length of '.>.'
+
+	return tbp
+
+
+def _handle_alt(choice: ET.Element, choices: list, is_ts_event: bool): # -> str
+	tbp = ''
+
+	alt = choice.find(f'mei:{'sic' if TAG == 'corr' else 'corr'}', ns)
+
+	# If alt contains <measure> as its first (and only) direct child: move this 
+	# <measure>'s <layer> content as direct children of alt and remove it from alt 
+	first_child = list(alt)[0]
+	if first_child.tag == f'{URI_MEI}measure':
+		layer = first_child.find('.//mei:layer', ns)
+		for child in list(layer):
+			alt.append(copy.deepcopy(child))
+		alt.remove(first_child)
+
+	# TS event
+	if is_ts_event:
+		# Possible direct children in alt: <beam>, <tabGrp>, <sb>
+		for j, elem in enumerate(list(alt)):
+			if elem.tag == f'{URI_MEI}beam':
+				tbp += handle_beam(elem, choices)
+			if elem.tag == f'{URI_MEI}tabGrp':
+				tbp += handle_tabGrp(elem, False)#j != len(alt)-1)
+			elif elem.tag == f'{URI_MEI}sb':
+				tbp += '\n/\n'
+	# MS event
+	else:
+		tbp = get_meterSig(alt.find('.//mei:meterSig', ns))
+
+	return tbp
+
+
+def get_meterSig(meterSig: str): # -> str
+	count = meterSig.get('count')
+	unit = meterSig.get('unit')
+	form = meterSig.get('form')
+	sym = meterSig.get('sym')
+
+	# @count, @unit
+	ms_key = f'{count}:{unit}'
+	# @form='num'
+	if form is not None:
+		ms_key += f'_{form}'
+	# @sym='cut', @sym='common'
+	if sym is not None:
+		ms_key += f'_{sym}'
+
+	return f'{MENSURATION_SIGNS[ms_key]}.>.'
+
+
+def handle_measure(measure: ET.Element, choices: list): # -> str
+	tbp = ''
+
+	# Possible direct children in <layer>: <beam>, <tabGrp>, <sb>
+	layer = measure.find('.//mei:layer', ns)
+	for elem in layer:
+		if elem.tag == f'{URI_MEI}beam':
+			tbp += handle_beam(elem, choices)
+		elif elem.tag == f'{URI_MEI}tabGrp':
+			# 1. Make event
+			tbp_event = handle_tabGrp(elem, False)
+			
+			# 2. Insert footnote
+			tg_lbl = elem.get('label')
+			if tg_lbl is not None and '<choice>' in tg_lbl:
+				tbp_event = insert_footnote(choices, tbp_event, tg_lbl, False, True)
+			tbp += tbp_event
+		elif elem.tag == f'{URI_MEI}sb':
+			tbp += '\n/\n'
+	barline = measure.get('right')
+	if barline != 'invis':
+		tbp += f'{BARLINES[barline]}.'
+	tbp += '\n'
+	
+	return tbp
+
+
+def handle_beam(beam: ET.Element, choices: list): # -> str
+	tbp = ''
+
+	# Possible direct children in <beam>: <tabGrp>, <sb>
+	b_contents = list(beam)
+	for i, elem in enumerate(b_contents):
+		if elem.tag == f'{URI_MEI}tabGrp':
+			# 1. Make event 
+			is_beamed = i != len(b_contents) - 1
+			tbp_event = handle_tabGrp(elem, is_beamed)
+
+			# 2. Insert footnote
+			lbl = elem.get('label')
+			if lbl is not None and '<choice>' in lbl:
+				is_single_tg_in_beam = True if ('(1/1)' in lbl and is_beamed) else False
+				tbp_event = insert_footnote(choices, tbp_event, lbl, is_single_tg_in_beam, True)
+			tbp += tbp_event
+		elif elem.tag == f'{URI_MEI}sb':
+			tbp += '\n/\n'
+
+	return tbp
+
+
+def handle_tabGrp(tabGrp: ET.Element, is_beamed: bool): # -> str
+	# Determine RhythmSymbol
+	rs = ''
+	if tabGrp.find('mei:tabDurSym', ns) is not None:
+		dur = tabGrp.get('dur')
+		dot = '*' if tabGrp.get('dots') is not None else ''
+		beam = '-' if is_beamed else ''
+		rs = f'{DURATIONS[dur]}{dot}{beam}.'  
+
+	# Determine TabSymbols
+	ts_per_course = [None, None, None, None, None, None] # first element is lowest-sounding course
+	for elem in tabGrp:
+		if elem.tag == f'{URI_MEI}note':
+			fret = elem.get('tab.fret')
+			course = elem.get('tab.course')
+			if TYPE == NOTATIONTYPES[FLT]:
+				ts = f'{"abcdefghikl"[int(fret)]}{course}.'
+			elif TYPE == NOTATIONTYPES[GLT]:
+				ts = f'{NEWSIDLER[int(course)-1][int(fret)]}.'
+			else:
+				ts = f'{fret}{course}.'
+			ts_per_course[NUM_COURSES - int(course)] = ts
+	
+	# Make event		
+	tss = ''
+	for ts in ts_per_course:
+		if ts is not None:
+			tss += ts
+
+	return f'{rs}{tss}>.'
+
+
+# Main functions -->
 def split_multi_measure_choice(root: ET.Element): # -> None
 	"""
 	Splits any successive <measure>s wrapped in a single <choice> each into their own <choice>, i.e.,
@@ -118,7 +273,7 @@ def split_multi_measure_choice(root: ET.Element): # -> None
 					curr_sic = ET.Element(f'{URI_MEI}sic', attrib={**sic.attrib})
 					curr_sic.append(copy.deepcopy(sic_m))
 					curr_choice = ET.Element(f'{URI_MEI}choice', attrib={**child.attrib})					
-					curr_choice.set(XML_ID_KEY, add_unique_id('c', xml_ids)[-1])
+					curr_choice.set(XML_ID_KEY, add_unique_id('c', XML_IDS)[-1])
 					curr_choice.append(curr_corr)
 					curr_choice.append(curr_sic)
 					choices_split.append(curr_choice)
@@ -172,229 +327,62 @@ def implement_choice(root: ET.Element, choice_ids: list, tag: str): # -> None
 		elem.remove(choice_elem)
 
 
-def insert_footnote(choices: list, tbp_events: str, lbl: str, is_single_tg_in_beam: bool, 
-					is_ts_event: bool): # -> str
-
-	if (is_ts_event and 'first' in lbl) or not is_ts_event:
-		choice_id = lbl.strip().split()[-1]
-		c = choices[choice_id]
-		ftnt_events = _handle_alt(c, choices, is_ts_event)
-		# A single <tabGrp> in a <beam> is wrapped directly in <choice> (and not 
-		# first in <beam>), meaning that the MS will not yet be beamed
-		if is_ts_event and is_single_tg_in_beam:
-			ms = ftnt_events[:ftnt_events.index('.')]
-			ftnt_events = ftnt_events.replace(ms, f'{ms}-')
-		# Do not include closing '>.'		
-		ftnt_events = ftnt_events[:-2]
-		ftnt = f'{{@\'{ftnt_events}\' {'in source' if TAG == 'corr' else 'corrected'}}}'
-	if is_ts_event and 'following' in lbl:
-		ftnt = '{@}'
-	tbp_events = tbp_events[:-3] + ftnt + tbp_events[-3:] # -3 is the length of '.>.'
-
-	return tbp_events
-
-
-def _handle_alt(choice: ET.Element, choices: list, is_ts_event: bool): # -> str
-	tbp_events = ''
-
-	alt = choice.find(f'mei:{'sic' if TAG == 'corr' else 'corr'}', ns)
-
-	# If alt contains <measure> as its first (and only) direct child: move this 
-	# <measure>'s <layer> content as direct children of alt and remove it from alt 
-	first_child = list(alt)[0]
-	if first_child.tag == f'{URI_MEI}measure':
-		layer = first_child.find('.//mei:layer', ns)
-		for child in list(layer):
-			alt.append(copy.deepcopy(child))
-		alt.remove(first_child)
-
-	# TS event
-	if is_ts_event:
-		# Possible direct children: <beam>, <tabGrp>, <sb>
-		for j, elem in enumerate(list(alt)):
-			if elem.tag == f'{URI_MEI}beam':
-				tbp_events += handle_beam(elem, choices)
-			if elem.tag == f'{URI_MEI}tabGrp':
-				tbp_events += convert_tabGrp(elem, False)#j != len(alt)-1)
-			elif elem.tag == f'{URI_MEI}sb':
-				tbp_events += '\n/\n'
-	# MS event
-	else:
-		tbp_events = convert_meterSig(alt.find('.//mei:meterSig', ns))
-
-	return tbp_events
-
-
-def convert_meterSig(meterSig: str): # -> str
-	count = meterSig.get('count')
-	unit = meterSig.get('unit')
-	form = meterSig.get('form')
-	sym = meterSig.get('sym')
-
-	# @count, @unit
-	ms_key = f'{count}:{unit}'
-	# @form='num'
-	if form is not None:
-		ms_key += f'_{form}'
-	# @sym='cut', @sym='common'
-	if sym is not None:
-		ms_key += f'_{sym}'
-
-	return f'{MENSURATION_SIGNS[ms_key]}.>.'
-
-
-def convert_tabGrp(tabGrp: ET.Element, is_beamed: bool): # -> str
-	# Determine RhythmSymbol
-	rs = ''
-	if tabGrp.find('mei:tabDurSym', ns) is not None:
-		dur = tabGrp.get('dur')
-		dot = '*' if tabGrp.get('dots') is not None else ''
-		beam = '-' if is_beamed else ''
-		rs = f'{DURATIONS[dur]}{dot}{beam}.'  
-
-	# Determine TabSymbols
-	ts_per_course = [None, None, None, None, None, None] # first element is lowest-sounding course
-	for elem in tabGrp:
-		if elem.tag == f'{URI_MEI}note':
-			fret = elem.get('tab.fret')
-			course = elem.get('tab.course')
-			if NOT_TYPE == NOTATIONTYPES[FLT]:
-				ts = f'{"abcdefghikl"[int(fret)]}{course}.'
-			elif NOT_TYPE == NOTATIONTYPES[GLT]:
-				ts = f'{NEWSIDLER[int(course)-1][int(fret)]}.'
-			else:
-				ts = f'{fret}{course}.'
-			ts_per_course[NUM_COURSES - int(course)] = ts
-	
-	# Make event		
-	tss = ''
-	for ts in ts_per_course:
-		if ts is not None:
-			tss += ts
-
-	return f'{rs}{tss}>.'
-
-
-def handle_beam(beam: ET.Element, choices: list): # -> str
-	tbp_events = ''
-
-	# Possible direct children in <beam>: <tabGrp>, <sb>
-	b_contents = list(beam)
-	for i, elem in enumerate(b_contents):
-		if elem.tag == f'{URI_MEI}tabGrp':
-			# 1. Make event 
-			is_beamed = i != len(b_contents) - 1
-			tbp_event = convert_tabGrp(elem, is_beamed)
-
-			# 2. Insert footnote
-			lbl = elem.get('label')
-			if lbl is not None and '<choice>' in lbl:
-				is_single_tg_in_beam = True if ('(1/1)' in lbl and is_beamed) else False
-				tbp_event = insert_footnote(choices, tbp_event, lbl, is_single_tg_in_beam, True)
-			tbp_events += tbp_event
-		elif elem.tag == f'{URI_MEI}sb':
-			tbp_events += '\n/\n'
-
-	return tbp_events
-
-
-def handle_measure(measure: ET.Element, choices: list): # -> str
-	tbp_events = ''
-
-	# Possible direct children in <layer>: <beam>, <tabGrp>, <sb>
-	layer = measure.find('.//mei:layer', ns)
-	for elem in layer:
-		if elem.tag == f'{URI_MEI}beam':
-			tbp_events += handle_beam(elem, choices)
-		elif elem.tag == f'{URI_MEI}tabGrp':
-			# 1. Make event
-			tbp_event = convert_tabGrp(elem, False)
-			
-			# 2. Insert footnote
-			tg_lbl = elem.get('label')
-			if tg_lbl is not None and '<choice>' in tg_lbl:
-				tbp_event = insert_footnote(choices, tbp_event, tg_lbl, False, True)
-			tbp_events += tbp_event
-		elif elem.tag == f'{URI_MEI}sb':
-			tbp_events += '\n/\n'
-	barline = measure.get('right')
-	if barline != 'invis':
-		tbp_events += f'{BARLINES[barline]}.'
-	tbp_events += '\n'
-
-#	# 2. Insert footnote (for whole <measure>) 
-#	#    NB Applies only if <choice> contains the whole <measure>, in which 
-#	#    case <measure> itself will not contain any further <choice>)
-#	m_lbl = measure.get('label') # m_lbl is on <measure>
-#	if m_lbl is not None and '<choice>' in m_lbl:
-#		print('JA3')
-#		print(tbp_events)
-#		print('-->' + m_lbl + '<--')
-#		tbp_events = insert_footnote(choices, tbp_events, m_lbl, False, True)	
-	
-	return tbp_events
-
-
 def handle_scoreDef(scoreDef: ET.Element, choices: list): # -> str
-	tbp_event = ''
+	tbp = ''
 
 	meterSig = scoreDef.find('.//mei:meterSig', ns)
 	if meterSig is not None:
 		# 1. Make event
-		tbp_event = convert_meterSig(meterSig) 
+		tbp = get_meterSig(meterSig) 
 		
 		# 2. Insert footnote
 		lbl = scoreDef.get('label') # lbl is on <scoreDef> as <choice> cannot contain <scoreDef> children 
 		if lbl is not None and '<choice>' in lbl:
-			tbp_event = insert_footnote(choices, tbp_event, lbl, False, False)
+			tbp = insert_footnote(choices, tbp, lbl, False, False)
 
-	return tbp_event
+	return tbp
 
 
 def handle_section(section: ET.Element, choices: list): # -> str
-	res = ''
+	tbp = ''
 
 	# Possible direct children in <section>: <scoreDef>, <measure>, <sb>
 	for elem in section:
 		if elem.tag == f'{URI_MEI}scoreDef':
-			res += handle_scoreDef(elem, choices)
+			tbp += handle_scoreDef(elem, choices)
 		elif elem.tag == f'{URI_MEI}measure':
-			res += handle_measure(elem, choices)
+			tbp += handle_measure(elem, choices)
 		elif elem.tag == f'{URI_MEI}sb':
-			res += '/\n'
+			tbp += '/\n'
 
-	return res
-
-
-def handle_score(score: ET.Element, choices: list): # -> str
-	res = ''
-
-	# Possible direct children in <score>: <scoreDef>, <section>, <sb>
-	for elem in score:
-		if elem.tag == f'{URI_MEI}scoreDef':
-			res += handle_scoreDef(elem, choices)
-		elif elem.tag == f'{URI_MEI}section':
-			res += handle_section(elem, choices)
-		elif elem.tag == f'{URI_MEI}sb':
-			res += '/\n'
-
-	return res + '//'
+	return tbp
 
 
-def get_meterinfo_and_diminution_str(score: ET.Element): # -> tuple
-	mi = [] 
-	dim = []
-
+def get_metadata(meiHead: ET.Element, score: ET.Element, ns: dict): # -> list
+	work = meiHead.find('.//mei:workList', ns).find('.//mei:work', ns)
+	composer = work.find('.//mei:composer', ns)
+	title = work.find('.//mei:title', ns)
+	tuning = score.find('.//mei:tuning', ns)
 	meterSigs = _get_meterSigs(score)
 	measures = score.findall('.//mei:measure', ns)
+
+	author_str = composer.text if composer is not None else ''
+	title_str = title.text if title is not None else ''
+	source_str = ''
+	tss_str = next((k for k, v in NOTATIONTYPES.items() if v == TYPE), None)
+	tuning_str = get_tuning(tuning, ns) if tuning is not None else G
+	mi = []
+	dim = []
 	for i, (bar, ms) in enumerate(meterSigs):
 		start_bar = int(bar)
 		end_bar = int(meterSigs[i + 1][0]) - 1 if i < (len(meterSigs) - 1) else int(measures[-1].get('n'))
 		meter = f'{ms.get('count')}/{ms.get('unit')}' if ms is not None else 'None'
 		mi.append(f'{meter} ({start_bar}-{end_bar})')
 		dim.append('1')
+	meterinfo_str = '; '.join(mi) 
+	diminution_str = '; '.join(dim)
 
-	return '; '.join(mi), '; '.join(dim)
+	return [author_str, title_str, source_str, tss_str, tuning_str, meterinfo_str, diminution_str]
 
 
 def _get_meterSigs(score: ET.Element): # -> list
@@ -417,6 +405,7 @@ def _get_meterSigs(score: ET.Element): # -> list
 	return meterSigs
 
 
+# Principal code -->
 if __name__ == "__main__":
 	# - tbp events: TS event, RS event, rest event, MS event, barline event
 	# - <choice>'s' <corr>/<sic> can contain: <scoreDef>, <measure>, <beam>, <tabGrp> 
@@ -438,60 +427,55 @@ if __name__ == "__main__":
 	#       <sb/>
 	#   <score>
 
-	with open(os.path.join(inpath, infile), 'r', encoding='utf-8') as file:
+	# 0. File processing
+	with open(os.path.join(in_path, in_file), 'r', encoding='utf-8') as file:
 		mei_str = file.read()
 
-	# Handle namespaces
+	# 1. Preliminaries
+	# a. Handle namespaces
 	ns = handle_namespaces(mei_str)
 	URI_MEI = f'{{{ns['mei']}}}'
 	URI_XML = f'{{{ns['xml']}}}'
 	XML_ID_KEY = f'{URI_XML}id'
-
-	# Get the tree, root (<mei>), and main MEI elements (<meiHead>, <score>)
+	# b. Get the tree, root (<mei>), and main MEI elements (<meiHead>, <score>)
 	tree, root = parse_tree(mei_str)
 	meiHead, music = get_main_MEI_elements(root, ns)
-#	meiHead = root.find('mei:meiHead', ns)
-#	music = root.find('mei:music', ns)
 	score = music.find('.//mei:score', ns)
-	NOT_TYPE = score.find('.//mei:staffDef', ns).get('notationtype')
+	TYPE = score.find('.//mei:staffDef', ns).get('notationtype')
+	# c. Collect all xml:ids
+	XML_IDS = collect_xml_ids(root, XML_ID_KEY)
 
-	# Collect all xml:ids
-	xml_ids = collect_xml_ids(root, XML_ID_KEY)
-#	xml_ids = [elem.attrib[XML_ID_KEY] for elem in root.iter() if XML_ID_KEY in elem.attrib]
-
-	# Handle <choice>s
+	# 2. Handle <choice>s
 	check_xml = False
 	check_elements = False
 	# a. Split multi-measure <choice>s
 	split_multi_measure_choice(root)
 	if check_xml:
-		write_xml(root, os.path.join(inpath, f'check-1{XML}'))
+		write_xml(root, os.path.join(in_path, f'check-1{XML}'))
 	# b. Implement <choice>s
 	choices = {c.get(XML_ID_KEY): c for c in score.findall('.//mei:choice', ns)}
 	choice_ids = choices.keys()
 	implement_choice(root, choice_ids, TAG)
 	if check_xml:
-		write_xml(root, os.path.join(inpath, f'check-2{XML}'))
+		write_xml(root, os.path.join(in_path, f'check-2{XML}'))
 	if check_elements:
 		print_all_elements(root, XML_ID_KEY)
 		print_all_labelled_elements(root, XML_ID_KEY)
 
-	# Make tbp encoding
-	tbp_str = handle_score(score, choices)
+	# 3. Make tbp encoding
+	tbp_str = ''
+	# Possible direct children in <score>: <scoreDef>, <section>, <sb>
+	for elem in score:
+		if elem.tag == f'{URI_MEI}scoreDef':
+			tbp_str += handle_scoreDef(elem, choices)
+		elif elem.tag == f'{URI_MEI}section':
+			tbp_str += handle_section(elem, choices)
+		elif elem.tag == f'{URI_MEI}sb':
+			tbp_str += '/\n'
+	tbp_str += '//'
 
-	# Extract metadata
-	# TODO to method
-	work = meiHead.find('.//mei:workList', ns).find('.//mei:work', ns)
-	composer = work.find('.//mei:composer', ns)
-	title = work.find('.//mei:title', ns)
-	tuning = score.find('.//mei:tuning', ns)
-	author_str = composer.text if composer is not None else ''
-	title_str = title.text if title is not None else ''
-	source_str = ''
-	tss_str = next((k for k, v in NOTATIONTYPES.items() if v == NOT_TYPE), None)
-	tuning_str = get_tuning(tuning, ns) if tuning is not None else G
-	meterinfo_str, diminution_str = get_meterinfo_and_diminution_str(score)
+	# 4. Extract metadata
+	metadata = get_metadata(meiHead, score, ns)
 
-	# Serialise into JSON-formatted string and print
-	res = [author_str, title_str, source_str, tss_str, tuning_str, meterinfo_str, diminution_str, tbp_str]
-	print(json.dumps(res))
+	# 5. Serialise into JSON-formatted string and print
+	print(json.dumps(metadata + [tbp_str]))

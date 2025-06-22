@@ -463,7 +463,7 @@ public class TabImport {
 //fuk		System.out.println(f.getParent());
 //fuk		System.out.println(f.getName());
 		List<String> res = PythonInterface.runPythonFileAsScript(
-			new String[]{python, script, f.getParent(), f.getName()}
+			new String[]{python, script, f.getName(), f.getParent()}
 		);
 		
 //fuk		System.out.println(res.get(0));
