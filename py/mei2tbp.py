@@ -359,9 +359,17 @@ def handle_section(section: ET.Element, choices: list): # -> str
 
 
 def get_metadata(meiHead: ET.Element, score: ET.Element, ns: dict): # -> list
-	work = meiHead.find('.//mei:workList', ns).find('.//mei:work', ns)
-	composer = work.find('.//mei:composer', ns)
-	title = work.find('.//mei:title', ns)
+	# TODO find out if piece title and composer shoould be in workList (as in my template-MEI) or in sourceDesc (as in E-LAUTE pieces)
+	workList = meiHead.find('.//mei:workList', ns)
+#	work = meiHead.find('.//mei:workList', ns).find('.//mei:work', ns)
+	if workList is not None:
+		work = workList.find('.//mei:work', ns)
+		composer = work.find('.//mei:composer', ns)
+		title = work.find('.//mei:title', ns)
+	else:
+		source = meiHead.find('.//mei:sourceDesc', ns).find('.//mei:source', ns)
+		composer = None
+		title = None
 	tuning = score.find('.//mei:tuning', ns)
 	meterSigs = _get_meterSigs(score)
 	measures = score.findall('.//mei:measure', ns)
