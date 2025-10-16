@@ -17,6 +17,7 @@ import org.apache.commons.lang3.ArrayUtils;
 
 import de.uos.fmt.musitech.data.score.NotationChord;
 import de.uos.fmt.musitech.data.score.NotationVoice;
+import de.uos.fmt.musitech.data.structure.Note;
 import de.uos.fmt.musitech.utility.math.Rational;
 import external.Tablature;
 import external.Transcription;
@@ -1247,6 +1248,8 @@ public class MEIExport {
 			tla = tab.getEncoding().getTimelineAgnostic();
 			transToTabInd = Transcription.alignTabAndTransIndices(btp, bnp).get(1);
 		}
+		List<List<Note>> chords = trans.getChords();
+		List<List<Double>> voiceLabels = trans.getVoiceLabels();
 		ScorePiece p = trans.getScorePiece();
 		ScoreMetricalTimeLine smtl = p.getScoreMetricalTimeLine();
 		int numVoices = p.getScore().size();
@@ -1282,6 +1285,8 @@ public class MEIExport {
 		Rational barEnd = new Rational(
 			mi.get(0)[Transcription.MI_NUM], mi.get(0)[Transcription.MI_DEN]
 		);
+		int prevChordInd = 0;
+		List<Integer[]> accidsInChord = new ArrayList<>();
 		for (int i = 0; i < bnp.length; i++) {
 			int iTab = ONLY_TAB || TAB_AND_TRANS ? transToTabInd.get(i).get(0) : -1; // each element (list) contains only one element (int)		
 			int pitch = bnp[i][Transcription.PITCH];
@@ -1299,8 +1304,24 @@ public class MEIExport {
 				smtl.getMetricPosition(onset);
 			Rational metPos = barMetPos[1];
 			Rational offset = onset.add(dur);
+			int chordInd = bnp[i][Transcription.CHORD_SEQ_NUM];
+			System.out.println("chordInd = " + chordInd);
+			int seqNumInChord = bnp[i][Transcription.NOTE_SEQ_NUM];
+			List<Integer> pitchesChord = Transcription.getPitchesInChord(chords.get(chordInd));
+			// Contains, for each pitch in the chord, two values: pitch and accid type 
+			// (0 = no accid; 1 = accid; 2 = accid.ges) 
+			if (chordInd > prevChordInd) { 
+				accidsInChord.clear();
+				prevChordInd = chordInd;
+			}
+//			accidsInChord.add(new Integer[]{pitch, 0});
+//			System.out.println("accidsInChord");
+//			for (Integer[] in : accidsInChord) {
+//				System.out.println(Arrays.asList(in));
+//			}
+			
 			int bar = barMetPos[0].getNumer();
-			int voice = LabelTools.convertIntoListOfVoices(trans.getVoiceLabels().get(i)).get(0); // TODO why .get(0)? 
+			int voice = LabelTools.convertIntoListOfVoices(voiceLabels.get(i)).get(0); // TODO why .get(0)? 
 
 			// currVoiceStrs and currVoiceInts start out as empty lists at i == 0,
 			// and are populated with currStrs and currInts for the current note 
@@ -1543,8 +1564,8 @@ public class MEIExport {
 			doubleSharpsInEffect = aie.get(4);
 			// a. Set pname, accid, oct
 			String pname = pa[0];
-			String accid = pa[1];
-			String accidGes = pa[2];
+			String accid = pa[1]; // empty if accidGes is not
+			String accidGes = pa[2]; // empty if accid is not
 			String oct = String.valueOf(PitchKeyTools.getOctave(pitch));
 			curr[STRINGS.indexOf("pname")] = pname; 
 			if (!accid.equals("")) {
@@ -1552,11 +1573,56 @@ public class MEIExport {
 			}
 			if (addAccidGes) {
 				if (!accidGes.equals("")) {
-					// accid.ges overrules accid
-					curr[STRINGS.indexOf("accid")] = null;
-					curr[STRINGS.indexOf("accid.ges")] = accidGes;
+					// If pitch does not appear earlier in the chord
+					if (!pitchesChord.subList(0, seqNumInChord).contains(pitch)) {
+//						curr[STRINGS.indexOf("accid")] = null;
+						// First occurrence of accidental in bar is before chord; set as accid.ges
+						curr[STRINGS.indexOf("accid.ges")] = accidGes;
+					}
+					// If pitch appears earlier in the chord (SNU/unison)
+					else {
+						for (Integer[] in : accidsInChord) {
+							if (in[0] == pitch) {
+								// If first occurrence of accidental in bar is earlier in chord 
+								// (i.e., if previous pitch is accid): set as accid
+								if (in[1] == 1) {
+									curr[STRINGS.indexOf("accid")] = accidGes;
+								}
+								// If first occurrence of accidental in bar is before chord 
+								// (i.e., if previous pitch is accid.ges)): set as accid.ges
+								if (in[1] == 2) {
+									curr[STRINGS.indexOf("accid.ges")] = accidGes;
+								}
+							}
+						}
+//						curr[STRINGS.indexOf("accid")] = accidGes;
+//						System.out.println(bar);
+//						System.out.println(voice);
+//						int lowestNoteIndex = i - seqNumInChord;
+//						for (int k = lowestNoteIndex; k < i; k++) {
+//							// Find note with same pitch
+//							if (bnp[k][Transcription.PITCH] == pitch) {
+//							// Find k in voicesInts and voicesStrs 
+//							// check if its accid is set to null
+//							for (int v = 0; v < numVoices; v++) {
+//								voicesInts.get(v);
+//							}
+//						}
+//						
+//						List<List<Integer[]>> intsCurrBar = currInts.get(bar);
+					}
 				}
 			}
+			accidsInChord.add(new Integer[]{pitch, 	
+				curr[STRINGS.indexOf("accid")] != null ? 1 :
+				(curr[STRINGS.indexOf("accid.ges")] != null	? 2 : 
+				0)	
+			});
+			System.out.println("accidsInChord");
+			for (Integer[] in : accidsInChord) {
+				System.out.println(Arrays.asList(in));
+			}
+
 			curr[STRINGS.indexOf("oct")] = oct;
 			if (verbose) {
 				System.out.println("pname                    " + pname);
