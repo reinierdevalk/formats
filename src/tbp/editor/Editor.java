@@ -174,8 +174,6 @@ public class Editor extends JFrame{
 
 			// Convert to .tbp (from .mei, .tab, .tc, .xml)
 			String tbp = TabImport.convertToTbp(cp, source, argPaths);
-//			System.out.println(tbp);
-//			System.exit(0);
 
 			// Destination is .tbp
 			if (outputFormat.equals(Encoding.TBP_EXT)) {

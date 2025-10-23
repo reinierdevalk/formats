@@ -1305,7 +1305,7 @@ public class MEIExport {
 			Rational metPos = barMetPos[1];
 			Rational offset = onset.add(dur);
 			int chordInd = bnp[i][Transcription.CHORD_SEQ_NUM];
-			System.out.println("chordInd = " + chordInd);
+//sbo			System.out.println("chordInd = " + chordInd);
 			int seqNumInChord = bnp[i][Transcription.NOTE_SEQ_NUM];
 			List<Integer> pitchesChord = Transcription.getPitchesInChord(chords.get(chordInd));
 			// Contains, for each pitch in the chord, two values: pitch and accid type 
@@ -1618,10 +1618,10 @@ public class MEIExport {
 				(curr[STRINGS.indexOf("accid.ges")] != null	? 2 : 
 				0)	
 			});
-			System.out.println("accidsInChord");
-			for (Integer[] in : accidsInChord) {
-				System.out.println(Arrays.asList(in));
-			}
+//sbo			System.out.println("accidsInChord");
+//sbo			for (Integer[] in : accidsInChord) {
+//sbo				System.out.println(Arrays.asList(in));
+//sbo			}
 
 			curr[STRINGS.indexOf("oct")] = oct;
 			if (verbose) {
