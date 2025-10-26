@@ -2335,7 +2335,7 @@ public class MEIExport {
 
 		String psp = StringTools.getPathString(Arrays.asList(paths.get("UTILS_PYTHON_PATH")));
 		boolean isWin = CLInterface.isWin();
-		String python = PythonInterface.selectPython();
+		String python = PythonInterface.selectPython(false);
 //		String python = PythonInterface.python2Installed() ? "python3" : "python";
 
 		// ints and strs are organised per bar, voice, note
@@ -2383,13 +2383,13 @@ public class MEIExport {
 			// NB: the stored file ends with a line break
 			ToolBox.storeTextFile(unbeamedStr, f);
 			beamedStr = PythonInterface.runPythonFileAsScript(
-				new String[]{python, psp + paths.get("BEAM_SCRIPT"), fName}
+				new String[]{python, psp + paths.get("BEAM_SCRIPT"), fName}, true
 			).get(0);
 			f.delete();
 		}
 		else {
 			beamedStr = PythonInterface.runPythonFileAsScript(
-				new String[]{python, psp + paths.get("BEAM_SCRIPT"), unbeamedStr}
+				new String[]{python, psp + paths.get("BEAM_SCRIPT"), unbeamedStr}, true
 			).get(0);
 		}
 
@@ -4902,7 +4902,7 @@ public class MEIExport {
 //		try {
 			beamed = 
 				PythonInterface.runPythonFileAsScript(new String[]{
-				"python", getPythonScriptPath() + "beam.py", notesFileName});
+				"python", getPythonScriptPath() + "beam.py", notesFileName}, true);
 //			beamed = PythonInterface.getScriptOutput(new String[]{
 //					"python", scriptPathPythonMEI + "beam.py", notesFileName});
 //		} catch (IOException e) {

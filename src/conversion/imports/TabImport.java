@@ -457,13 +457,13 @@ public class TabImport {
 		// - see what the function overlap is and extract those into utils.py
 		// - properly import functions from utils.py in mei2tbp and diplomat
 
-		String python = PythonInterface.selectPython();
+		String python = PythonInterface.selectPython(false);
 //fuk		System.out.println(python);
 //fuk		System.out.println(script);
 //fuk		System.out.println(f.getParent());
 //fuk		System.out.println(f.getName());
 		List<String> res = PythonInterface.runPythonFileAsScript(
-			new String[]{python, script, f.getName(), f.getParent()}
+			new String[]{python, script, f.getName(), f.getParent()}, true
 		);
 		
 //fuk		System.out.println(res.get(0));
