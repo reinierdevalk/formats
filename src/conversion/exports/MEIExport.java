@@ -1286,6 +1286,8 @@ public class MEIExport {
 			mi.get(0)[Transcription.MI_NUM], mi.get(0)[Transcription.MI_DEN]
 		);
 		int prevChordInd = 0;
+		// accidsInChord contains, for each pitch in the chord, two values: 
+		// pitch and accid type (0 = no accid; 1 = accid; 2 = accid.ges)
 		List<Integer[]> accidsInChord = new ArrayList<>();
 		for (int i = 0; i < bnp.length; i++) {
 			int iTab = ONLY_TAB || TAB_AND_TRANS ? transToTabInd.get(i).get(0) : -1; // each element (list) contains only one element (int)		
@@ -1305,11 +1307,9 @@ public class MEIExport {
 			Rational metPos = barMetPos[1];
 			Rational offset = onset.add(dur);
 			int chordInd = bnp[i][Transcription.CHORD_SEQ_NUM];
-//sbo			System.out.println("chordInd = " + chordInd);
 			int seqNumInChord = bnp[i][Transcription.NOTE_SEQ_NUM];
 			List<Integer> pitchesChord = Transcription.getPitchesInChord(chords.get(chordInd));
-			// Contains, for each pitch in the chord, two values: pitch and accid type 
-			// (0 = no accid; 1 = accid; 2 = accid.ges) 
+
 			if (chordInd > prevChordInd) { 
 				accidsInChord.clear();
 				prevChordInd = chordInd;
@@ -1589,9 +1589,16 @@ public class MEIExport {
 									curr[STRINGS.indexOf("accid")] = accidGes;
 								}
 								// If first occurrence of accidental in bar is before chord 
-								// (i.e., if previous pitch is accid.ges)): set as accid.ges
+								// (i.e., if previous pitch is accid.ges))
 								if (in[1] == 2) {
+									// If both pitches are in the same system: set as accid.ges
 									curr[STRINGS.indexOf("accid.ges")] = accidGes;
+									// If both pitches are not in the same system
+									// a. If first occurrence of accidental in bar is in same system: 
+									//    set as accid.ges; set first occurrence to accid
+									
+									// b. If first occurrence of accidental in bar is in other system: set as accid
+									
 								}
 							}
 						}
@@ -1618,10 +1625,12 @@ public class MEIExport {
 				(curr[STRINGS.indexOf("accid.ges")] != null	? 2 : 
 				0)	
 			});
-//sbo			System.out.println("accidsInChord");
-//sbo			for (Integer[] in : accidsInChord) {
-//sbo				System.out.println(Arrays.asList(in));
-//sbo			}
+			if (chordInd == 45 || chordInd == 46) {
+				System.out.println("chordInd " + chordInd + ", accidsInChord");
+				for (Integer[] in : accidsInChord) {
+					System.out.println(Arrays.asList(in));
+				}
+			}
 
 			curr[STRINGS.indexOf("oct")] = oct;
 			if (verbose) {
@@ -1782,6 +1791,63 @@ public class MEIExport {
 			barsInts.add(barInts);
 			barsStrs.add(barStrs);
 		}
+
+		// For each note that has accid.ges: if it doesn't have accid before in that voice, turn it into accid
+		
+		// It can happen that a note has accid.ges, but the accid for that note (which occurs earlier in the 
+		// bar) occurs in another voice. In that case, the accid.ges must be changed into accid. 
+		// If a note in voice v has accid.ges, but is not preceded by the same note with accid in that voice 
+		// (i.e., the preceding note with accid is in another voice), the accid.ges is changed into accid
+		// NB: Does not apply to key signature accid.ges!
+		// Example for voices [3]-[0]
+		// [0] F#4 G4  E4
+		// [1] D4  D4  C#4		C# has accid.ges --> incorect, neds to be changed to accid
+		// [2] -   C#4 C#4		first C# has accid; second has accid.ges --> correct
+		// [3] -   G3  A3
+		List<List<String[]>> bar8 = barsStrs.get(7);
+		// For each voice
+		List<String> keySigAccidGes = Arrays.asList();
+		for (int i = 0; i < bar8.size(); i++) {
+			System.out.println("voice = " + i);
+			List<String[]> voice = bar8.get(i);
+			for (int j = 0; j < voice.size(); j++) {
+				String[] currNote = voice.get(j);
+				String currPname = currNote[STRINGS.indexOf("pname")];
+				String currAccidGes = currNote[STRINGS.indexOf("accid.ges")];
+				// In case of non-keysig accid.ges
+				if (currAccidGes != null && !keySigAccidGes.contains(currPname + currAccidGes)) {
+					boolean hasAccidBefore = false;
+					String currName = currPname + currNote[STRINGS.indexOf("oct")];
+					// For each note before currNote
+					for (int k = 0; k < j; k++) {
+						String[] prevNote = voice.get(k);
+						String prevName = prevNote[STRINGS.indexOf("pname")] + prevNote[STRINGS.indexOf("oct")];
+						// If same note: check if it has accid
+						if (prevName.equals(currName)) {
+							if (prevNote[STRINGS.indexOf("accid")] != null) {
+								hasAccidBefore = true;
+								break;
+							}
+						}
+					}
+					// No same note with accid before: change accid.ges to accid for currNote
+					if (!hasAccidBefore) {
+						String accid = currNote[STRINGS.indexOf("accid.ges")];
+						currNote[STRINGS.indexOf("accid")] = accid;
+						currNote[STRINGS.indexOf("accid.ges")] = null;
+					}
+				}
+			}
+		}
+		System.out.println("------------------------------");
+		for (int i = 0; i < bar8.size(); i++) {
+			System.out.println("voice = " + i);
+			List<String[]> voice = bar8.get(i);
+			for (int j = 0; j < voice.size(); j++) {
+				System.out.println(Arrays.asList(voice.get(j)));
+			}
+		}
+//		System.exit(0);
 
 		return Arrays.asList(barsInts, barsStrs);
 	}
