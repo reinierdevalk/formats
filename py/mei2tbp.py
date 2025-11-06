@@ -183,11 +183,11 @@ def handle_beam(beam: ET.Element, choices: list): # -> str
 def handle_tabGrp(tabGrp: ET.Element, is_beamed: bool): # -> str
 	# Determine RhythmSymbol
 	rs = ''
-	if tabGrp.find('mei:tabDurSym', ns) is not None:
+	if tabGrp.find('mei:tabDurSym', ns) is not None or tabGrp.find('mei:rest', ns) is not None:
 		dur = tabGrp.get('dur')
 		dot = '*' if tabGrp.get('dots') is not None else ''
 		beam = '-' if is_beamed else ''
-		rs = f'{DURATIONS[dur]}{dot}{beam}.'  
+		rs = f'{DURATIONS[dur]}{dot}{beam}.'
 
 	# Determine TabSymbols
 	ts_per_course = [None, None, None, None, None, None] # first element is lowest-sounding course
@@ -202,7 +202,7 @@ def handle_tabGrp(tabGrp: ET.Element, is_beamed: bool): # -> str
 			else:
 				ts = f'{fret}{course}.'
 			ts_per_course[NUM_COURSES - int(course)] = ts
-	
+
 	# Make event		
 	tss = ''
 	for ts in ts_per_course:
