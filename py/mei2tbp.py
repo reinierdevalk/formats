@@ -15,8 +15,8 @@ if lib_path not in sys.path:
 
 from py.constants import *
 from py.utils import (get_tuning, add_unique_id, handle_namespaces, parse_tree, get_main_MEI_elements,
-					  collect_xml_ids, find_first_elem_after, write_xml, print_all_elements, 
-					  print_all_labelled_elements)
+					  collect_xml_ids, unwrap_markup_elements, find_first_elem_after, write_xml, 
+					  print_all_elements, print_all_labelled_elements)
 
 _, in_file, in_path = sys.argv
 
@@ -345,6 +345,16 @@ def handle_scoreDef(scoreDef: ET.Element, choices: list): # -> str
 
 def handle_section(section: ET.Element, choices: list): # -> str
 	tbp = ''
+
+#	print_all_elements(section, f'{URI_XML}id')
+#	print('')
+
+	markup_elements = [f'{URI_MEI}{e}' for e in MARKUP_ELEMENTS]
+	# Unwrap all markup elements
+	unwrap_markup_elements(section, markup_elements)
+
+#	print_all_elements(section, f'{URI_XML}id')
+
 
 	# Possible direct children in <section>: <scoreDef>, <measure>, <sb>
 	for elem in section:
