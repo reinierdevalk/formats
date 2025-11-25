@@ -117,13 +117,14 @@ public class Editor extends JFrame{
 	public static void main(String[] args) {
 		// Parse CLI args and set variables
 		List<Object> parsed = CLInterface.parseCLIArgs(args, null);
-		cliOptsVals = (Map<String, String>) parsed.get(0);
+		
+		Map<String, String> argCliOptsVals = (Map<String, String>) parsed.get(0);
 
 		boolean dev = args.length == 0 ? true : args[CLInterface.DEV_IND].equals(String.valueOf(true));
 		String opts = args[CLInterface.OPTS_IND];
 		String defaultVals = args[CLInterface.DEFAULT_VALS_IND];
 		String uov = args[CLInterface.USER_OPTS_VALS_IND];
-		boolean store = Boolean.parseBoolean(args[4]); // true when called by abtab; false when called by diplomat.py
+		boolean store = Boolean.parseBoolean(args[4]); // true when called by abtab converter; false when called by diplomat.py
 		String source = args[5];
 		String destination = args[6];
 		Map<String, String> argPaths = CLInterface.getPaths(dev);
@@ -133,7 +134,7 @@ public class Editor extends JFrame{
 //			// Parse CLI args and set variables
 //			List<Object> parsed = CLInterface.parseCLIArgs(args, null);
 //			cliOptsVals = (Map<String, String>) parsed.get(0);
-			new Editor(argPaths);
+			new Editor(argPaths, argCliOptsVals);
 		}
 		// Else: convert directly
 		// NB Can be called from abtab converter or diplomat.py
@@ -184,9 +185,10 @@ public class Editor extends JFrame{
 				if (outputFormat.equals(MEIExport.MEI_EXT) || outputFormat.equals(MEIExport.XML_EXT)) {
 					Encoding e = new Encoding(tbp, outputName, Stage.RULES_CHECKED);
 					Tablature tab = new Tablature(e, false);
-					cliOptsVals = CLInterface.setPieceSpecificTransParams(cliOptsVals, tab, "converter");
+					argCliOptsVals = CLInterface.setPieceSpecificTransParams(argCliOptsVals, tab, "converter");
+//					cliOptsVals = CLInterface.setPieceSpecificTransParams(cliOptsVals, tab, "converter");
 					String mei = MEIExport.exportMEIFile(
-						null, new Tablature(e, false), null, CLInterface.getTranscriptionParams(cliOptsVals), 
+						null, tab /*new Tablature(e, false)*/, null, CLInterface.getTranscriptionParams(/*cliOptsVals*/argCliOptsVals), 
 						argPaths, new String[]{
 							null, 
 							source,
@@ -221,13 +223,13 @@ public class Editor extends JFrame{
 	/**
 	 * Creates a Viewer (JFrame) containing a JMenuBar and a Container with graphical elements.
 	 */
-	public Editor(Map<String, String> argPaths) {
+	public Editor(Map<String, String> argPaths, Map<String, String> argCliOptsVals) {
 		super();
-		init(argPaths);
+		init(argPaths, argCliOptsVals);
 	}
 
 
-	private void init(Map<String, String> argPaths) {
+	private void init(Map<String, String> argPaths, Map<String, String> argCliOptsVals) {
 		// a. Viewer instance variables
 		setHighlighter();
 		setEncodingTextArea();
@@ -240,6 +242,7 @@ public class Editor extends JFrame{
 		setPaths(argPaths);
 		setFile(null);
 		setImportFile(null);
+		setCliOptsVals(argCliOptsVals);
 		// b. JFrame instance variables
 		setLayout(null);
 		setJMenuBar(makeJMenuBar());
@@ -359,6 +362,11 @@ public class Editor extends JFrame{
 
 	private void setImportFile(File f) {
 		importFile = f;
+	}
+
+
+	private void setCliOptsVals(Map<String, String> m) {
+		cliOptsVals = m;
 	}
 
 
@@ -515,6 +523,11 @@ public class Editor extends JFrame{
 
 	private File getImportFile() {
 		return importFile;
+	}
+
+
+	private Map<String, String> getCliOptsVals() {
+		return cliOptsVals;
 	}
 
 
@@ -778,9 +791,11 @@ public class Editor extends JFrame{
 					}
 					else if (exportType.equals(MEI)) {
 						Tablature tab = new Tablature(e, false);
-						cliOptsVals = CLInterface.setPieceSpecificTransParams(cliOptsVals, tab, "converter");
+						Map<String, String> argCliOptsVals = getCliOptsVals();
+						argCliOptsVals = CLInterface.setPieceSpecificTransParams(argCliOptsVals, tab, "converter");
+//						cliOptsVals = CLInterface.setPieceSpecificTransParams(cliOptsVals, tab, "converter");
 						contents = MEIExport.exportMEIFile(
-							null, tab, null, CLInterface.getTranscriptionParams(cliOptsVals), 
+							null, tab, null, CLInterface.getTranscriptionParams(/*cliOptsVals*/argCliOptsVals), 
 							getPaths(), new String[]{
 								null, 
 								file != null ? file.getName() : importFile.getName(),

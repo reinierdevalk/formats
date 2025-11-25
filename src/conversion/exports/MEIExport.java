@@ -247,6 +247,9 @@ public class MEIExport {
 		String tp = StringTools.getPathString(Arrays.asList(paths.get("TEMPLATES_PATH")));
 		String mei = ToolBox.readTextFile(new File(tp + paths.get("MEI_TEMPLATE")));
 		mei = StringTools.crlf2lf(mei);
+		String vp = StringTools.getPathString(Arrays.asList(paths.get("CODE_PATH")));
+		String version = ToolBox.readTextFile(new File(vp + paths.get("VERSION")));
+		
 		String path = dict[0];
 
 		boolean includeTab = transParams.get(CLInterface.TABLATURE).equals("y");
@@ -296,7 +299,6 @@ public class MEIExport {
 		meiHead[MEI_HEAD.indexOf("title")] = ONLY_TAB || TAB_AND_TRANS ? tab.getName() : trans.getName();
 		mei = mei.replace("title_placeholder", meiHead[MEI_HEAD.indexOf("title")]);
 		mei = mei.replace("date_placeholder", new SimpleDateFormat("yyyy-MM-dd").format(new Date()));
-		String version = "1.0.0"; // TODO
 		mei = mei.replace("version_placeholder", version);
 		mei = mei.replace("input_file_placeholder", "Input file: " + dict[1]);
 		mei = mei.replace("tool_placeholder", dict[2]);
@@ -5575,32 +5577,32 @@ public class MEIExport {
 					}
 					if (isMappingCase) {
 						if (orn.contains(tabInd)) {
-							noteStr += "color='blue'" + " ";
+							noteStr += "head.color='blue'" + " ";
 						}
 						else if (rep.contains(tabInd)) {
-							noteStr += "color='lime'" + " ";
+							noteStr += "head.color='lime'" + " ";
 						}
 						else if (ficta.contains(tabInd)) {
-							noteStr += "color='orange'" + " ";
+							noteStr += "head.color='orange'" + " ";
 						}
 						else if (other.contains(tabInd)) {
-							noteStr += "color='red'" + " ";
+							noteStr += "head.color='red'" + " ";
 						}
 					}
 					else {
 						if (highlightNotes) {
 							int index = (tabInd != -1) ? tabInd : noteInt[INTS.indexOf("ind")];
 							if (inc.contains(index)) {
-								noteStr += "color='red'" + " ";
+								noteStr += "head.color='red'" + " ";
 							}
 							else if (over.contains(index)) {
-								noteStr += "color='orange'" + " ";
+								noteStr += "head.color='orange'" + " ";
 							}
 							else if (sup.contains(index)) {
-								noteStr += "color='lime'" + " ";
+								noteStr += "head.color='lime'" + " ";
 							}
 							else if (half.contains(index)) {
-								noteStr += "color='blue'" + " ";
+								noteStr += "head.color='blue'" + " ";
 							}
 						}
 					}
