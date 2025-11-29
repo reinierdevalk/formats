@@ -440,40 +440,12 @@ public class TabImport {
 		String mei = ToolBox.readTextFile(f);
 		mei = StringTools.crlf2lf(mei);
 
-		//  in formats/py/
-		//  in transcriber/py/
-		// beam.py in utils/py/
-		// model-*.py in voice_separation/py/
-		
-		// code/eclipse/
-		//              formats/py
-		//                          mei2tbp.py 
-		//              transcriber/py
-		//                          diplomat.py
-		//              utils/py
-		//                          utils.py
-		//                          beam.py
-		
-		// - see what the function overlap is and extract those into utils.py
-		// - properly import functions from utils.py in mei2tbp and diplomat
-
-		String python = PythonInterface.selectPython(false);
-//fuk		System.out.println(python);
-//fuk		System.out.println(script);
-//fuk		System.out.println(f.getParent());
-//fuk		System.out.println(f.getName());
+		String python = PythonInterface.getPython();
+//		String python = PythonInterface.selectPython(false);
 		List<String> res = PythonInterface.runPythonFileAsScript(
 			new String[]{python, script, f.getName(), f.getParent()}, true
 		);
-		
-//fuk		System.out.println(res.get(0));
-//fuk		System.out.println(res.get(1));
-//fuk		System.out.println(res.get(2));
-//fuk		System.out.println(res.get(3));
-//fuk		System.out.println(res.get(4));
-//fuk		System.out.println(res.get(5));
-//fuk		System.out.println(res.get(6));
-		
+
 		String[] metadata = new String[]{
 			res.get(0), res.get(1), res.get(2),
 			TabSymbolSet.getTabSymbolSet(null, res.get(3)).getName(), 
@@ -484,11 +456,8 @@ public class TabImport {
 		StringBuffer metadataStr = new StringBuffer(
 			createMetadata(metadata, Encoding.METADATA_TAGS)
 		);
-		
-//fuk		System.out.println(metadataStr.toString());
 
 		return metadataStr.append(res.get(7)).toString();
-//		return null;
 	}
 
 

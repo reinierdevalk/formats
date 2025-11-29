@@ -2265,7 +2265,8 @@ public class MEIExport {
 
 		String psp = StringTools.getPathString(Arrays.asList(paths.get("UTILS_PYTHON_PATH")));
 		boolean isWin = CLInterface.isWin();
-		String python = PythonInterface.selectPython(false);
+		String python = PythonInterface.getPython();
+//		String python = PythonInterface.selectPython(false);
 //		String python = PythonInterface.python2Installed() ? "python3" : "python";
 
 		// ints and strs are organised per bar, voice, note
@@ -2508,7 +2509,7 @@ public class MEIExport {
 							for (int j : Arrays.asList(Transcription.ORNAMENTATION_IND, 
 								Transcription.REPETITION_IND, Transcription.FICTA_IND,Transcription.ADAPTATION_IND)) {
 								if (mismatchInds.get(j).contains(tabInd)) {
-									attsList.add(new String[]{"color", clrs.get(j)});
+									attsList.add(new String[]{"head.color", clrs.get(j)});
 									break;
 								}
 							}
@@ -2521,7 +2522,7 @@ public class MEIExport {
 								// ErrorCalculator.SUPERFLUOUS_VOICE, ErrorCalculator.HALF_VOICE
 								for (int j : Arrays.asList(1, 2, 3, 4)) {
 									if (mismatchInds.get(j).contains(ind)) {
-										attsList.add(new String[]{"color", clrs.get(j)});
+										attsList.add(new String[]{"head.color", clrs.get(j)});
 										break;
 									}
 								}

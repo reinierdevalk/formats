@@ -46,6 +46,7 @@ import conversion.exports.MEIExport;
 import conversion.imports.TabImport;
 import external.Tablature;
 import interfaces.CLInterface;
+import interfaces.PythonInterface;
 import internal.core.Encoding;
 import internal.core.Encoding.Stage;
 import tbp.symbols.Symbol;
@@ -120,14 +121,16 @@ public class Editor extends JFrame{
 		
 		Map<String, String> argCliOptsVals = (Map<String, String>) parsed.get(0);
 
-		boolean dev = args.length == 0 ? true : args[CLInterface.DEV_IND].equals(String.valueOf(true));
 		String opts = args[CLInterface.OPTS_IND];
 		String defaultVals = args[CLInterface.DEFAULT_VALS_IND];
 		String uov = args[CLInterface.USER_OPTS_VALS_IND];
 		boolean store = Boolean.parseBoolean(args[4]); // true when called by abtab converter; false when called by diplomat.py
 		String source = args[5];
 		String destination = args[6];
+
+		boolean dev = args.length == 0 ? true : args[CLInterface.DEV_IND].equals(String.valueOf(true));
 		Map<String, String> argPaths = CLInterface.getPaths(dev);
+		PythonInterface.setPython(dev, argPaths.get("CODE_PATH"));
 
 		// No source and destination provided: convert through editor
 		if (source.equals("") && destination.equals("")) {
