@@ -130,7 +130,7 @@ public class Editor extends JFrame{
 
 		boolean dev = args.length == 0 ? true : args[CLInterface.DEV_IND].equals(String.valueOf(true));
 		Map<String, String> argPaths = CLInterface.getPaths(dev);
-		PythonInterface.setPython(dev, argPaths.get("CODE_PATH"));
+		PythonInterface.setPython(dev, argPaths.get("VENV_PATH"));
 
 		// No source and destination provided: convert through editor
 		if (source.equals("") && destination.equals("")) {
