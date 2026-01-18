@@ -191,17 +191,15 @@ public class Editor extends JFrame{
 					argCliOptsVals = CLInterface.setPieceSpecificTransParams(argCliOptsVals, tab, "converter");
 //					cliOptsVals = CLInterface.setPieceSpecificTransParams(cliOptsVals, tab, "converter");
 					String mei = MEIExport.exportMEIFile(
-						null, tab /*new Tablature(e, false)*/, null, CLInterface.getTranscriptionParams(/*cliOptsVals*/argCliOptsVals), 
+						null, tab, null, CLInterface.getTranscriptionParams(/*cliOptsVals*/argCliOptsVals), 
 						argPaths, new String[]{
-							null, 
+							store ? cp + destination : null, 
 							source,
+							destination,
 							"abtab -- converter"
 						}
 					);
-					if (store) {
-						ToolBox.storeTextFile(mei, new File(cp + destination));
-					}
-					else {
+					if (!store) {
 						Map<String, String> m = new LinkedHashMap<>();
 						m.put("content", mei);
 						String pythonDict = StringTools.createJSONString(m);
@@ -791,6 +789,8 @@ public class Editor extends JFrame{
 //					);
 					if (exportType.equals(ASCII)) {
 						contents = makeASCIITab(e);
+						// Save as/export
+						ToolBox.storeTextFile(contents, f);
 					}
 					else if (exportType.equals(MEI)) {
 						Tablature tab = new Tablature(e, false);
@@ -800,15 +800,14 @@ public class Editor extends JFrame{
 						contents = MEIExport.exportMEIFile(
 							null, tab, null, CLInterface.getTranscriptionParams(/*cliOptsVals*/argCliOptsVals), 
 							getPaths(), new String[]{
-								null, 
+								f.getPath(),
 								file != null ? file.getName() : importFile.getName(),
+								f.getName(),
 								"abtab -- converter"
 							}
 						);
 					}
 				}
-				// Save as/export
-				ToolBox.storeTextFile(contents, f);
 			}
 		}		
 	}

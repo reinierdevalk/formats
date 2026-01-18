@@ -76,114 +76,114 @@ public class MEIExport {
 	}
 
 
-	public static void main2(String[] args) {
-		String testTabFile = "4471_40_cum_sancto_spiritu";
-//		testTabFile = "5263_12_in_exitu_israel_de_egipto_desprez-3";
-//		testTabFile = "4465_33-34_memor_esto-2";
-//		testTabFile = "5255_04_stabat_mater_dolorosa_desprez-2";
-//		testTabFile = "5254_03_benedicta_es_coelorum_desprez-1";
-//		testTabFile = "5256_05_inviolata_integra_desprez-2";
-//		testTabFile = "5256_05_inviolata_integra_desprez-3";
-//		testTabFile = "4vv/BSB-mus.ms._272-mille_regres";
-
-//		testTabFile = "3vv/newsidler-1536_7-disant_adiu";
-//		testTabFile = "3vv/newsidler-1536_7-mess_pensees";
-//		testTabFile = "3vv/pisador-1552_7-pleni_de"; // TODO remove every second barline
-//		testTabFile = "3vv/judenkuenig-1523_2-elslein_liebes";
-//		testTabFile = "3vv/newsidler-1544_2-nun_volget"; // TODO remove every second barline in ternary part
-//		testTabFile = "3vv/phalese-1547_7-tant_que-3vv";
-		
-		testTabFile = "4vv/rotta-1546_15-bramo_morir";
-		
-		Tablature testTab = new Tablature(new File(
-			"F:/research/data/annotated/encodings/thesis-int/" + testTabFile + 
-			Encoding.TBP_EXT));
-		
-		testTab = new Tablature(new File(
-			"C:/Users/Reinier/Desktop/test-capirola/tab/capirola-1520-et_in_terra_pax" + 
-			Encoding.TBP_EXT));
-		
-//		exportTabMEIFile(testTab, "C:/Users/Reinier/Desktop/test-capirola/capirola-1520-et_in_terra_pax" + "-tab");	
-//		System.exit(0);
-		
-		String notationtypeStr = "tab.lute.italian"; // give as param to method
-		String tuningStr = "lute.renaissance.6"; // give as param to method
-		
-		String path = "C:/Users/Reinier/Desktop/MEI/";
-		path = "C:/Users/Reinier/Desktop/IMS-tours/example/MIDI/";
-		
-		String tabFile = "thesis-int/3vv/newsidler-1544_2-nun_volget";
-		tabFile = "1132_13_o_sio_potessi_donna_berchem_solo";
-
-		String pieceName = "capirola-1520-et_in_terra_pax";
-		pieceName = "1025_adieu_mes_amours";
-
-		// This must be a created Transcription and the second argument must be null
-		Transcription trans = 
-//			null;
-			new Transcription(
-////			new File("F:/research/data/MIDI/thesis-int/4vv/rotta-1546_15-bramo_morir.mid")
-////			new File("F:/research/data/annotated/MIDI/thesis-int/3vv/newsidler-1544_2-nun_volget.mid")
-////			new File("F:/research/data/MIDI/" + tabFile + MIDIImport.EXTENSION)
-////			new File("C:/Users/Reinier/Desktop/MEI/newsidler-1544_2-nun_volget-test.mid")
-////			new File("C:/Users/Reinier/Desktop/2019-ISMIR/test/mapped/3610_033_inter_natos_mulierum_morales_T-rev-mapped.mid")
-////			new File("C:/Users/Reinier/Desktop/IMS-tours/fold_06-1025_adieu_mes_amours.mid")
-////			new File("C:/Users/Reinier/Desktop/IMS-tours/example/MIDI/Berchem_-_O_s'io_potessi_donna.mid")
-////			new File("C:/Users/Reinier/Desktop/test-capirola/mapped/" + pieceName + MIDIImport.EXTENSION)
-//			new File("C:/Users/Reinier/Desktop/beaming/mapped/" + pieceName + MIDIImport.EXTENSION)
-			new File("F:/research/experiments/thesis/exp_3.1/thesis-int/3vv/N/bwd/out/fold_03-judenkuenig-1523_2-elslein_liebes.mid")		
-		);
-
-
+//	public static void main(String[] args) {
+//		String testTabFile = "4471_40_cum_sancto_spiritu";
+////		testTabFile = "5263_12_in_exitu_israel_de_egipto_desprez-3";
+////		testTabFile = "4465_33-34_memor_esto-2";
+////		testTabFile = "5255_04_stabat_mater_dolorosa_desprez-2";
+////		testTabFile = "5254_03_benedicta_es_coelorum_desprez-1";
+////		testTabFile = "5256_05_inviolata_integra_desprez-2";
+////		testTabFile = "5256_05_inviolata_integra_desprez-3";
+////		testTabFile = "4vv/BSB-mus.ms._272-mille_regres";
+//
+////		testTabFile = "3vv/newsidler-1536_7-disant_adiu";
+////		testTabFile = "3vv/newsidler-1536_7-mess_pensees";
+////		testTabFile = "3vv/pisador-1552_7-pleni_de"; // TODO remove every second barline
+////		testTabFile = "3vv/judenkuenig-1523_2-elslein_liebes";
+////		testTabFile = "3vv/newsidler-1544_2-nun_volget"; // TODO remove every second barline in ternary part
+////		testTabFile = "3vv/phalese-1547_7-tant_que-3vv";
+//		
+//		testTabFile = "4vv/rotta-1546_15-bramo_morir";
+//		
+//		Tablature testTab = new Tablature(new File(
+//			"F:/research/data/annotated/encodings/thesis-int/" + testTabFile + 
+//			Encoding.TBP_EXT));
+//		
+//		testTab = new Tablature(new File(
+//			"C:/Users/Reinier/Desktop/test-capirola/tab/capirola-1520-et_in_terra_pax" + 
+//			Encoding.TBP_EXT));
+//		
+////		exportTabMEIFile(testTab, "C:/Users/Reinier/Desktop/test-capirola/capirola-1520-et_in_terra_pax" + "-tab");	
+////		System.exit(0);
+//		
+//		String notationtypeStr = "tab.lute.italian"; // give as param to method
+//		String tuningStr = "lute.renaissance.6"; // give as param to method
+//		
+//		String path = "C:/Users/Reinier/Desktop/MEI/";
+//		path = "C:/Users/Reinier/Desktop/IMS-tours/example/MIDI/";
+//		
+//		String tabFile = "thesis-int/3vv/newsidler-1544_2-nun_volget";
+//		tabFile = "1132_13_o_sio_potessi_donna_berchem_solo";
+//
+//		String pieceName = "capirola-1520-et_in_terra_pax";
+//		pieceName = "1025_adieu_mes_amours";
+//
+//		// This must be a created Transcription and the second argument must be null
+//		Transcription trans = 
+////			null;
+//			new Transcription(
+//////			new File("F:/research/data/MIDI/thesis-int/4vv/rotta-1546_15-bramo_morir.mid")
+//////			new File("F:/research/data/annotated/MIDI/thesis-int/3vv/newsidler-1544_2-nun_volget.mid")
+//////			new File("F:/research/data/MIDI/" + tabFile + MIDIImport.EXTENSION)
+//////			new File("C:/Users/Reinier/Desktop/MEI/newsidler-1544_2-nun_volget-test.mid")
+//////			new File("C:/Users/Reinier/Desktop/2019-ISMIR/test/mapped/3610_033_inter_natos_mulierum_morales_T-rev-mapped.mid")
+//////			new File("C:/Users/Reinier/Desktop/IMS-tours/fold_06-1025_adieu_mes_amours.mid")
+//////			new File("C:/Users/Reinier/Desktop/IMS-tours/example/MIDI/Berchem_-_O_s'io_potessi_donna.mid")
+//////			new File("C:/Users/Reinier/Desktop/test-capirola/mapped/" + pieceName + MIDIImport.EXTENSION)
+////			new File("C:/Users/Reinier/Desktop/beaming/mapped/" + pieceName + MIDIImport.EXTENSION)
+//			new File("F:/research/experiments/thesis/exp_3.1/thesis-int/3vv/N/bwd/out/fold_03-judenkuenig-1523_2-elslein_liebes.mid")		
+//		);
+//
+//
+////		Tablature tab = 
+////			new Tablature(new File("F:/research/data/encodings/" + tabFile + Encoding.EXTENSION), true);
+////		Tablature tab = 
+//////			new Tablature(new File("C:/Users/Reinier/Desktop/test-capirola/tab/" +
+////			new Tablature(new File("C:/Users/Reinier/Desktop/beaming/tab/" +
+////			pieceName + Encoding.EXTENSION), true);
 //		Tablature tab = 
-//			new Tablature(new File("F:/research/data/encodings/" + tabFile + Encoding.EXTENSION), true);
-//		Tablature tab = 
-////			new Tablature(new File("C:/Users/Reinier/Desktop/test-capirola/tab/" +
-//			new Tablature(new File("C:/Users/Reinier/Desktop/beaming/tab/" +
-//			pieceName + Encoding.EXTENSION), true);
-		Tablature tab = 
-			new Tablature(new File("F:/research/data/annotated/encodings/thesis-int/" + 
-			"3vv/judenkuenig-1523_2-elslein_liebes" + 
-//			"4vv/rotta-1546_15-bramo_morir" +
-			Encoding.TBP_EXT), true);
-//		tab = null;
-		
-//		List<List<String[]>> data = getData(t);
-//		List<Object> data = getData(t);
-//		List<List<Integer>> mismatchInds = 
-//			ToolBox.getStoredObjectBinary(new ArrayList<List<Integer>>(), 
-//			new File("C:/Users/Reinier/Desktop/2019-ISMIR/test/mapped/" + 
-//			"3610_033_inter_natos_mulierum_morales_T-rev" + "-mismatchInds" + ".ser"));
-		List<List<Integer>> mismatchInds = new ArrayList<>();
-		mismatchInds.add(new ArrayList<Integer>());
-		mismatchInds.add(new ArrayList<Integer>());
-		mismatchInds.add(new ArrayList<Integer>());
-		mismatchInds.add(new ArrayList<Integer>());
-		mismatchInds.add(new ArrayList<Integer>());
-		
-		boolean grandStaff = true;
-		boolean tabOnTop = true;
-		String s = path + "newsidler-1544_2-nun_volget-test";
-		s = path + "fold_06-1025_adieu_mes_amours";
-		s = path + "Berchem_-_O_s'io_potessi_donna";
-		s = "C:/Users/Reinier/Desktop/test-capirola/" + pieceName;
-		s = "C:/Users/Reinier/Desktop/beaming/" + pieceName;
-		s = "C:/Users/Reinier/Desktop/" + "judenkuenig-1523_2-elslein_liebes";
-		
-//		List<Integer[]> mi = (tab == null) ? trans.getMeterInfo() : tab.getMeterInfo();
-		
-		Map<String, String> paths = null;
-		exportMEIFile(trans, tab, /*tab.getBasicTabSymbolProperties(), trans.getKeyInfo(), 
-			tab.getTripletOnsetPairs(),*/ mismatchInds, paths, 
-			null, new String[]{s, ""});
-//		System.out.println(ToolBox.readTextFile(new File(s)));
-
-//		String scoreType = grandStaff ? "grand_staff" : "score";
-//		ToolBox.storeTextFile(mei, 
-//			new File(path + t.getNumberOfVoices() + Runner.voices + "/" + t.getPieceName() + "-" + 
-//			scoreType + ".xml"));
-//		System.out.println(Arrays.asList(data.get(0).get(0)));
-	}
+//			new Tablature(new File("F:/research/data/annotated/encodings/thesis-int/" + 
+//			"3vv/judenkuenig-1523_2-elslein_liebes" + 
+////			"4vv/rotta-1546_15-bramo_morir" +
+//			Encoding.TBP_EXT), true);
+////		tab = null;
+//		
+////		List<List<String[]>> data = getData(t);
+////		List<Object> data = getData(t);
+////		List<List<Integer>> mismatchInds = 
+////			ToolBox.getStoredObjectBinary(new ArrayList<List<Integer>>(), 
+////			new File("C:/Users/Reinier/Desktop/2019-ISMIR/test/mapped/" + 
+////			"3610_033_inter_natos_mulierum_morales_T-rev" + "-mismatchInds" + ".ser"));
+//		List<List<Integer>> mismatchInds = new ArrayList<>();
+//		mismatchInds.add(new ArrayList<Integer>());
+//		mismatchInds.add(new ArrayList<Integer>());
+//		mismatchInds.add(new ArrayList<Integer>());
+//		mismatchInds.add(new ArrayList<Integer>());
+//		mismatchInds.add(new ArrayList<Integer>());
+//		
+//		boolean grandStaff = true;
+//		boolean tabOnTop = true;
+//		String s = path + "newsidler-1544_2-nun_volget-test";
+//		s = path + "fold_06-1025_adieu_mes_amours";
+//		s = path + "Berchem_-_O_s'io_potessi_donna";
+//		s = "C:/Users/Reinier/Desktop/test-capirola/" + pieceName;
+//		s = "C:/Users/Reinier/Desktop/beaming/" + pieceName;
+//		s = "C:/Users/Reinier/Desktop/" + "judenkuenig-1523_2-elslein_liebes";
+//		
+////		List<Integer[]> mi = (tab == null) ? trans.getMeterInfo() : tab.getMeterInfo();
+//		
+//		Map<String, String> paths = null;
+//		exportMEIFile(trans, tab, /*tab.getBasicTabSymbolProperties(), trans.getKeyInfo(), 
+//			tab.getTripletOnsetPairs(),*/ mismatchInds, paths, 
+//			null, new String[]{s, ""});
+////		System.out.println(ToolBox.readTextFile(new File(s)));
+//
+////		String scoreType = grandStaff ? "grand_staff" : "score";
+////		ToolBox.storeTextFile(mei, 
+////			new File(path + t.getNumberOfVoices() + Runner.voices + "/" + t.getPieceName() + "-" + 
+////			scoreType + ".xml"));
+////		System.out.println(Arrays.asList(data.get(0).get(0)));
+//	}
 
 
 	//////////////////////////////
@@ -224,17 +224,22 @@ public class MEIExport {
 	 * Exports the given Transcription or Tablature as an MEI file. If a save path is provided,
 	 * the file is saved at the given path; else, its contents are returned as a String.
 	 * 
-	 * @param trans Must be a Transcription created setting the encodingFile argument to null
-	 *              (i.e., one that has basicNoteProperties).
+	 * @param trans Must be a Transcription created setting the encodingFile argument to <code>null</code>
+	 *              (i.e., one that has <code>basicNoteProperties</code>).
 	 * @param tab
 	 * @param mismatchInds
-	 * @param grandStaff
-	 * @param tabOnTop
 	 * @param paths
 	 * @param transParams
-	 * @param dict
+	 * @param dict A {@code String[]} containing
+	 *         <ul>
+	 *         <li>As element 0: the save path.
+	 *         <li>As element 1: the source file (basename only).</li>
+	 *         <li>As element 2: the destination file (basename only).</li>
+	 *         <li>As element 3: the <code>abtab</code> tool used.</li>
+	 *         </ul>
 	 * 
-	 * @return
+	 * @return <code>null</code> if <code>dict[0]</code> (the save path) is not <code>null</code>, 
+	 *         else the file contents as a string.
 	 */
 	public static String exportMEIFile(Transcription trans, Tablature tab, List<List<Integer>> mismatchInds, 
 		Map<String, String> transParams, Map<String, String> paths, String[] dict) {
@@ -249,7 +254,7 @@ public class MEIExport {
 		mei = StringTools.crlf2lf(mei);
 		String vp = StringTools.getPathString(Arrays.asList(paths.get("CODE_PATH")));
 		String version = ToolBox.readTextFile(new File(vp + paths.get("VERSION")));
-		
+
 		String path = dict[0];
 
 		boolean includeTab = transParams.get(CLInterface.TABLATURE).equals("y");
@@ -301,7 +306,8 @@ public class MEIExport {
 		mei = mei.replace("date_placeholder", new SimpleDateFormat("yyyy-MM-dd").format(new Date()));
 		mei = mei.replace("version_placeholder", version);
 		mei = mei.replace("input_file_placeholder", "Input file: " + dict[1]);
-		mei = mei.replace("tool_placeholder", dict[2]);
+		mei = mei.replace("output_file_placeholder", "Output file: " + dict[2]);
+		mei = mei.replace("tool_placeholder", dict[3]);
 
 		// 2. Make the <music> and replace in template. The <music> consists of the <score>, 
 		// containing the main <scoreDef> and one or more <section>s. Each <section> but the  
