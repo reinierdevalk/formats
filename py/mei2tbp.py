@@ -14,8 +14,8 @@ if lib_path not in sys.path:
 	sys.path.insert(0, lib_path)
 
 from py.constants import *
-from py.utils import (get_tuning, add_unique_id, handle_namespaces, parse_tree, get_main_MEI_elements,
-					  collect_xml_ids, unwrap_markup_elements, find_first_elem_after, write_xml, 
+from py.utils import (get_tuning_ET, add_unique_id, get_namespaces_ET, parse_tree_ET, get_main_MEI_elements_ET,
+					  collect_xml_ids_ET, unwrap_markup_elements, find_first_elem_after, write_xml, 
 					  print_all_elements, print_all_labelled_elements)
 
 _, in_file, in_path = sys.argv
@@ -388,7 +388,7 @@ def get_metadata(meiHead: ET.Element, score: ET.Element, ns: dict): # -> list
 	title_str = title.text if title is not None else ''
 	source_str = ''
 	tss_str = next((k for k, v in NOTATIONTYPES.items() if v == TYPE), None)
-	tuning_str = get_tuning(tuning, ns) if tuning is not None else G
+	tuning_str = get_tuning_ET(tuning, ns) if tuning is not None else G
 	mi = []
 	dim = []
 	for i, (bar, ms) in enumerate(meterSigs):
@@ -451,17 +451,17 @@ if __name__ == "__main__":
 
 	# 1. Preliminaries
 	# a. Handle namespaces
-	ns = handle_namespaces(mei_str)
+	ns = get_namespaces_ET(mei_str)
 	URI_MEI = f'{{{ns['mei']}}}'
 	URI_XML = f'{{{ns['xml']}}}'
 	XML_ID_KEY = f'{URI_XML}id'
 	# b. Get the tree, root (<mei>), and main MEI elements (<meiHead>, <score>)
-	tree, root = parse_tree(mei_str)
-	meiHead, music = get_main_MEI_elements(root, ns)
+	tree, root = parse_tree_ET(mei_str)
+	meiHead, music = get_main_MEI_elements_ET(root, ns)
 	score = music.find('.//mei:score', ns)
 	TYPE = score.find('.//mei:staffDef', ns).get('notationtype')
 	# c. Collect all xml:ids
-	XML_IDS = collect_xml_ids(root, XML_ID_KEY)
+	XML_IDS = collect_xml_ids_ET(root, XML_ID_KEY)
 
 	# 2. Handle <choice>s
 	check_xml = False
