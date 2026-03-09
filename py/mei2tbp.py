@@ -14,9 +14,12 @@ if lib_path not in sys.path:
 	sys.path.insert(0, lib_path)
 
 from py.constants import *
-from py.utils import (get_tuning_ET, add_unique_id, get_namespaces_ET, parse_tree_ET, get_main_MEI_elements_ET,
-					  collect_xml_ids_ET, unwrap_markup_elements, find_first_elem_after, write_xml, 
-					  print_all_elements, print_all_labelled_elements)
+#from py.utils import (get_tuning_ET, add_unique_id, get_namespaces_ET, parse_tree_ET, get_main_MEI_elements_ET,
+#					  collect_xml_ids_ET, unwrap_markup_elements, find_first_elem_after, write_xml, 
+#					  print_all_elements, print_all_labelled_elements)
+from py.utils import (get_tuning_OLD, add_unique_id, handle_namespaces_OLD, parse_tree_OLD, get_main_MEI_elements_OLD,
+					  collect_xml_ids_OLD, unwrap_markup_elements_OLD, find_first_elem_after, write_xml, 
+					  print_all_elements_OLD, print_all_labelled_elements) # TODO rename these to their lxml equivalents (now _NEW; remove this suffix)
 
 _, in_file, in_path = sys.argv
 
@@ -351,7 +354,7 @@ def handle_section(section: ET.Element, choices: list): # -> str
 
 	markup_elements = [f'{URI_MEI}{e}' for e in MARKUP_ELEMENTS]
 	# Unwrap all markup elements
-	unwrap_markup_elements(section, markup_elements)
+	unwrap_markup_elements_OLD(section, markup_elements)
 
 #	print_all_elements(section, f'{URI_XML}id')
 
@@ -388,7 +391,7 @@ def get_metadata(meiHead: ET.Element, score: ET.Element, ns: dict): # -> list
 	title_str = title.text if title is not None else ''
 	source_str = ''
 	tss_str = next((k for k, v in NOTATIONTYPES.items() if v == TYPE), None)
-	tuning_str = get_tuning_ET(tuning, ns) if tuning is not None else G
+	tuning_str = get_tuning_OLD(tuning, ns) if tuning is not None else G
 	mi = []
 	dim = []
 	for i, (bar, ms) in enumerate(meterSigs):
@@ -451,17 +454,17 @@ if __name__ == "__main__":
 
 	# 1. Preliminaries
 	# a. Handle namespaces
-	ns = get_namespaces_ET(mei_str)
+	ns = handle_namespaces_OLD(mei_str)
 	URI_MEI = f'{{{ns['mei']}}}'
 	URI_XML = f'{{{ns['xml']}}}'
 	XML_ID_KEY = f'{URI_XML}id'
 	# b. Get the tree, root (<mei>), and main MEI elements (<meiHead>, <score>)
-	tree, root = parse_tree_ET(mei_str)
-	meiHead, music = get_main_MEI_elements_ET(root, ns)
+	tree, root = parse_tree_OLD(mei_str)
+	meiHead, music = get_main_MEI_elements_OLD(root, ns)
 	score = music.find('.//mei:score', ns)
 	TYPE = score.find('.//mei:staffDef', ns).get('notationtype')
 	# c. Collect all xml:ids
-	XML_IDS = collect_xml_ids_ET(root, XML_ID_KEY)
+	XML_IDS = collect_xml_ids_OLD(root, XML_ID_KEY)
 
 	# 2. Handle <choice>s
 	check_xml = False

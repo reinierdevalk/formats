@@ -451,7 +451,7 @@ public class TabImport {
 			TabSymbolSet.getTabSymbolSet(null, res.get(3)).getName(), 
 			res.get(4), 
 			res.get(5).contains("None") ? "" : res.get(5), 
-			res.get(5).contains("None") ? "" : res.get(6)
+			res.get(6).contains("None") ? "" : res.get(6)
 		};
 		StringBuffer metadataStr = new StringBuffer(
 			createMetadata(metadata, Encoding.METADATA_TAGS)
