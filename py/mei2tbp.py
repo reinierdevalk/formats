@@ -2,7 +2,7 @@ import copy
 import json
 import os
 import sys
-import xml.etree.ElementTree as ET
+from lxml import etree
 
 # Ensure that Python can find .py files in utils/py/ regardless of where the script
 # is run from by adding the path holding the code (<lib_path>) to sys.path
@@ -14,12 +14,10 @@ if lib_path not in sys.path:
 	sys.path.insert(0, lib_path)
 
 from py.constants import *
-#from py.utils import (get_tuning_ET, add_unique_id, get_namespaces_ET, parse_tree_ET, get_main_MEI_elements_ET,
-#					  collect_xml_ids_ET, unwrap_markup_elements, find_first_elem_after, write_xml, 
-#					  print_all_elements, print_all_labelled_elements)
-from py.utils import (get_tuning_OLD, add_unique_id, handle_namespaces_OLD, parse_tree_OLD, get_main_MEI_elements_OLD,
-					  collect_xml_ids_OLD, unwrap_markup_elements_OLD, find_first_elem_after, write_xml, 
-					  print_all_elements_OLD, print_all_labelled_elements) # TODO rename these to their lxml equivalents (now _NEW; remove this suffix)
+from py.lxml_tools import (get_namespaces, collect_xml_ids, find_first_elem_after, 
+						   write_xml, print_all_elements, print_all_labelled_elements)
+from py.mei_tools import get_main_MEI_elements, unwrap_markup_elements, get_tuning
+from py.tools import add_unique_id
 
 _, in_file, in_path = sys.argv
 
@@ -61,9 +59,8 @@ XML_IDS = None
 TYPE = None
 
 
-# Helper functions -->
-def insert_footnote(choices: list, tbp: str, lbl: str, is_single_tg_in_beam: bool, 
-					is_ts_event: bool): # -> str
+# Helper functions (called once or more by main functions or other helper functions) -->
+def insert_footnote(choices: list, tbp: str, lbl: str, is_single_tg_in_beam: bool, is_ts_event: bool) -> str:
 
 	if (is_ts_event and 'first' in lbl) or not is_ts_event:
 		choice_id = lbl.strip().split()[-1]
@@ -84,7 +81,7 @@ def insert_footnote(choices: list, tbp: str, lbl: str, is_single_tg_in_beam: boo
 	return tbp
 
 
-def _handle_alt(choice: ET.Element, choices: list, is_ts_event: bool): # -> str
+def _handle_alt(choice: etree._Element, choices: list, is_ts_event: bool) -> str:
 	tbp = ''
 
 	alt = choice.find(f'mei:{'sic' if TAG == 'corr' else 'corr'}', ns)
@@ -115,7 +112,7 @@ def _handle_alt(choice: ET.Element, choices: list, is_ts_event: bool): # -> str
 	return tbp
 
 
-def get_meterSig(meterSig: str): # -> str
+def get_meterSig(meterSig: str) -> str:
 	count = meterSig.get('count')
 	unit = meterSig.get('unit')
 	form = meterSig.get('form')
@@ -133,7 +130,7 @@ def get_meterSig(meterSig: str): # -> str
 	return f'{MENSURATION_SIGNS[ms_key]}.>.'
 
 
-def handle_measure(measure: ET.Element, choices: list): # -> str
+def handle_measure(measure: etree._Element, choices: list) -> str:
 	tbp = ''
 
 	# Possible direct children in <layer>: <beam>, <tabGrp>, <sb>
@@ -160,7 +157,7 @@ def handle_measure(measure: ET.Element, choices: list): # -> str
 	return tbp
 
 
-def handle_beam(beam: ET.Element, choices: list): # -> str
+def handle_beam(beam: etree._Element, choices: list) -> str:
 	tbp = ''
 
 	# Possible direct children in <beam>: <tabGrp>, <sb>
@@ -183,7 +180,7 @@ def handle_beam(beam: ET.Element, choices: list): # -> str
 	return tbp
 
 
-def handle_tabGrp(tabGrp: ET.Element, is_beamed: bool): # -> str
+def handle_tabGrp(tabGrp: etree._Element, is_beamed: bool) -> str:
 	# Determine RhythmSymbol
 	rs = ''
 	if tabGrp.find('mei:tabDurSym', ns) is not None or tabGrp.find('mei:rest', ns) is not None:
@@ -215,8 +212,8 @@ def handle_tabGrp(tabGrp: ET.Element, is_beamed: bool): # -> str
 	return f'{rs}{tss}>.'
 
 
-# Main functions -->
-def split_multi_measure_choice(root: ET.Element): # -> None
+# Main functions (called once by principal code) -->
+def split_multi_measure_choice(root: etree._Element) -> None:
 	"""
 	Splits any successive <measure>s wrapped in a single <choice> each into their own <choice>, i.e.,
 	
@@ -271,11 +268,11 @@ def split_multi_measure_choice(root: ET.Element): # -> None
 					if corr_m.get('n') != sic_m.get('n'):
 						raise ValueError(f'Mismatch in measure number (@n) values in <corr> and <sic>:\
 										 {corr_m.get('n')} != {sic_m.get('n')}')
-					curr_corr = ET.Element(f'{URI_MEI}corr', attrib={**corr.attrib})
+					curr_corr = etree.Element(f'{URI_MEI}corr', attrib={**corr.attrib})
 					curr_corr.append(copy.deepcopy(corr_m))
-					curr_sic = ET.Element(f'{URI_MEI}sic', attrib={**sic.attrib})
+					curr_sic = etree.Element(f'{URI_MEI}sic', attrib={**sic.attrib})
 					curr_sic.append(copy.deepcopy(sic_m))
-					curr_choice = ET.Element(f'{URI_MEI}choice', attrib={**child.attrib})					
+					curr_choice = etree.Element(f'{URI_MEI}choice', attrib={**child.attrib})					
 					curr_choice.set(XML_ID_KEY, add_unique_id('c', XML_IDS)[-1])
 					curr_choice.append(curr_corr)
 					curr_choice.append(curr_sic)
@@ -291,7 +288,7 @@ def split_multi_measure_choice(root: ET.Element): # -> None
 		parent.remove(choice_comb)
 
 
-def implement_choice(root: ET.Element, choice_ids: list, tag: str): # -> None
+def implement_choice(root: etree._Element, choice_ids: list, tag: str) -> None:
 	replacements = []
 
 	for elem in root.iter():
@@ -330,7 +327,7 @@ def implement_choice(root: ET.Element, choice_ids: list, tag: str): # -> None
 		elem.remove(choice_elem)
 
 
-def handle_scoreDef(scoreDef: ET.Element, choices: list): # -> str
+def handle_scoreDef(scoreDef: etree._Element, choices: list) -> str:
 	tbp = ''
 
 	meterSig = scoreDef.find('.//mei:meterSig', ns)
@@ -346,7 +343,7 @@ def handle_scoreDef(scoreDef: ET.Element, choices: list): # -> str
 	return tbp
 
 
-def handle_section(section: ET.Element, choices: list): # -> str
+def handle_section(section: etree._Element, choices: list) -> str:
 	tbp = ''
 
 #	print_all_elements(section, f'{URI_XML}id')
@@ -354,10 +351,7 @@ def handle_section(section: ET.Element, choices: list): # -> str
 
 	markup_elements = [f'{URI_MEI}{e}' for e in MARKUP_ELEMENTS]
 	# Unwrap all markup elements
-	unwrap_markup_elements_OLD(section, markup_elements)
-
-#	print_all_elements(section, f'{URI_XML}id')
-
+	unwrap_markup_elements(section, markup_elements)
 
 	# Possible direct children in <section>: <scoreDef>, <measure>, <sb>
 	for elem in section:
@@ -371,7 +365,7 @@ def handle_section(section: ET.Element, choices: list): # -> str
 	return tbp
 
 
-def get_metadata(meiHead: ET.Element, score: ET.Element, ns: dict): # -> list
+def get_metadata(meiHead: etree._Element, score: etree._Element, ns: dict) -> list:
 	# TODO find out if piece title and composer shoould be in workList (as in my template-MEI) or in sourceDesc (as in E-LAUTE pieces)
 	workList = meiHead.find('.//mei:workList', ns)
 #	work = meiHead.find('.//mei:workList', ns).find('.//mei:work', ns)
@@ -391,7 +385,7 @@ def get_metadata(meiHead: ET.Element, score: ET.Element, ns: dict): # -> list
 	title_str = title.text if title is not None else ''
 	source_str = ''
 	tss_str = next((k for k, v in NOTATIONTYPES.items() if v == TYPE), None)
-	tuning_str = get_tuning_OLD(tuning, ns) if tuning is not None else G
+	tuning_str = get_tuning(tuning, ns) if tuning is not None else G
 	mi = []
 	dim = []
 	for i, (bar, ms) in enumerate(meterSigs):
@@ -406,7 +400,7 @@ def get_metadata(meiHead: ET.Element, score: ET.Element, ns: dict): # -> list
 	return [author_str, title_str, source_str, tss_str, tuning_str, meterinfo_str, diminution_str]
 
 
-def _get_meterSigs(score: ET.Element): # -> list
+def _get_meterSigs(score: etree._Element) -> list:
 	meterSigs = []
 	elems_flat = list(score.iter()) # flat list of all elements in document order
 	scoreDefs = score.findall('.//mei:scoreDef', ns)
@@ -429,7 +423,7 @@ def _get_meterSigs(score: ET.Element): # -> list
 # Principal code -->
 if __name__ == "__main__":
 	# - tbp events: TS event, RS event, rest event, MS event, barline event
-	# - <choice>'s' <corr>/<sic> can contain: <scoreDef>, <measure>, <beam>, <tabGrp> 
+	# - <choice>'s <corr>/<sic> can contain: <scoreDef>, <measure>, <beam>, <tabGrp> 
 	# - basic structure of the MEI, with <sb/> where they *may* appear
 	#   <score>
 	#       <scoreDef/>
@@ -453,18 +447,20 @@ if __name__ == "__main__":
 		mei_str = file.read()
 
 	# 1. Preliminaries
-	# a. Handle namespaces
-	ns = handle_namespaces_OLD(mei_str)
+	# a. Get root (<mei>) and tree
+	root = etree.fromstring(mei_str.encode('utf-8'))
+	tree = etree.ElementTree(root)	
+	# b. Get namespaces and URIs
+	ns = get_namespaces(root, 'mei')
 	URI_MEI = f'{{{ns['mei']}}}'
 	URI_XML = f'{{{ns['xml']}}}'
 	XML_ID_KEY = f'{URI_XML}id'
-	# b. Get the tree, root (<mei>), and main MEI elements (<meiHead>, <score>)
-	tree, root = parse_tree_OLD(mei_str)
-	meiHead, music = get_main_MEI_elements_OLD(root, ns)
+	# c. Get main MEI elements (<meiHead>, <music>), and <score>
+	meiHead, music = get_main_mei_elements(root, ns)
 	score = music.find('.//mei:score', ns)
 	TYPE = score.find('.//mei:staffDef', ns).get('notationtype')
-	# c. Collect all xml:ids
-	XML_IDS = collect_xml_ids_OLD(root, XML_ID_KEY)
+	# d. Collect all xml:ids
+	XML_IDS = collect_xml_ids(root, ns)
 
 	# 2. Handle <choice>s
 	check_xml = False

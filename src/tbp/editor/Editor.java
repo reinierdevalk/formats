@@ -777,6 +777,7 @@ public class Editor extends JFrame{
 						setTitle(f.getName() + TITLE[2]);
 					}
 					contents = etaContents;
+					ToolBox.storeTextFile(contents, f);
 				}
 				// Export case
 				else {
