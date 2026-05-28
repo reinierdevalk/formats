@@ -16,7 +16,7 @@ if lib_path not in sys.path:
 from py.constants import *
 from py.lxml_tools import (get_namespaces, collect_xml_ids, find_first_elem_after, 
 						   write_xml, print_all_elements, print_all_labelled_elements)
-from py.mei_tools import get_main_MEI_elements, unwrap_markup_elements, get_tuning
+from py.mei_tools import get_main_mei_elements, unwrap_markup_elements, get_tuning
 from py.tools import add_unique_id
 
 _, in_file, in_path = sys.argv
