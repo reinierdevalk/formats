@@ -2,6 +2,7 @@ import copy
 import json
 import os
 import sys
+from fractions import Fraction
 from lxml import etree
 
 # Ensure that Python can find .py files in utils/py/ regardless of where the script
@@ -16,7 +17,7 @@ if lib_path not in sys.path:
 from py.constants import *
 from py.lxml_tools import (get_namespaces, collect_xml_ids, find_first_elem_after, 
 						   write_xml, print_all_elements, print_all_labelled_elements)
-from py.mei_tools import get_main_mei_elements, unwrap_markup_elements, get_tuning
+from py.mei_tools import get_main_mei_elements, unwrap_markup_elements, get_tuning, get_total_dur
 from py.tools import add_unique_id
 
 _, in_file, in_path = sys.argv
@@ -49,9 +50,17 @@ NEWSIDLER = [['5', 'e', 'k', 'p', 'v', '9', 'e-', 'k-', 'p-', 'v-', '9-'],
 			 ['1', 'a', 'f', 'l', 'q', 'x', 'a-', 'f-', 'l-', 'q-', 'x-'],
 			 ['+', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K']
 			]
+ALT = {
+		'sic': 'corr', 
+		'corr': 'sic', 
+		'orig': 'reg', 
+		'reg': 'orig'
+}
 NUM_COURSES = 6
-TAG = 'corr' # TODO make argument
-#TAG = 'sic'
+TAG = 'sic'
+#TAG = 'corr' # TODO make argument
+#TAG = 'orig'
+#TAG = 'reg'
 URI_MEI = None
 URI_XML = None
 XML_ID_KEY = None
@@ -61,7 +70,6 @@ TYPE = None
 
 # Helper functions (called once or more by main functions or other helper functions) -->
 def insert_footnote(choices: list, tbp: str, lbl: str, is_single_tg_in_beam: bool, is_ts_event: bool) -> str:
-
 	if (is_ts_event and 'first' in lbl) or not is_ts_event:
 		choice_id = lbl.strip().split()[-1]
 		c = choices[choice_id]
@@ -83,8 +91,7 @@ def insert_footnote(choices: list, tbp: str, lbl: str, is_single_tg_in_beam: boo
 
 def _handle_alt(choice: etree._Element, choices: list, is_ts_event: bool) -> str:
 	tbp = ''
-
-	alt = choice.find(f'mei:{'sic' if TAG == 'corr' else 'corr'}', ns)
+	alt = choice.find(f'mei:{ALT[TAG]}', ns)
 
 	# If alt contains <measure> as its first (and only) direct child: move this 
 	# <measure>'s <layer> content as direct children of alt and remove it from alt 
@@ -97,8 +104,10 @@ def _handle_alt(choice: etree._Element, choices: list, is_ts_event: bool) -> str
 
 	# TS event
 	if is_ts_event:
-		# Possible direct children in alt: <beam>, <tabGrp>, <sb>
-		for j, elem in enumerate(list(alt)):
+		# Possible direct children in alt: differs case by case
+		# Relevant direct children in alt: <beam>, <tabGrp>, <sb> 
+		for elem in alt.iter():
+#		for j, elem in enumerate(list(alt)): 
 			if elem.tag == f'{URI_MEI}beam':
 				tbp += handle_beam(elem, choices)
 			if elem.tag == f'{URI_MEI}tabGrp':
@@ -365,8 +374,8 @@ def handle_section(section: etree._Element, choices: list) -> str:
 	return tbp
 
 
-def get_metadata(meiHead: etree._Element, score: etree._Element, ns: dict) -> list:
-	# TODO find out if piece title and composer shoould be in workList (as in my template-MEI) or in sourceDesc (as in E-LAUTE pieces)
+def get_metadata(meiHead: etree._Element, score: etree._Element, ns: dict) -> tuple[list, Fraction]:
+	# TODO find out if piece title and composer should be in workList (as in my template-MEI) or in sourceDesc (as in E-LAUTE pieces)
 	workList = meiHead.find('.//mei:workList', ns)
 #	work = meiHead.find('.//mei:workList', ns).find('.//mei:work', ns)
 	if workList is not None:
@@ -387,17 +396,31 @@ def get_metadata(meiHead: etree._Element, score: etree._Element, ns: dict) -> li
 	tss_str = next((k for k, v in NOTATIONTYPES.items() if v == TYPE), None)
 	tuning_str = get_tuning(tuning, ns) if tuning is not None else G
 	mi = []
+	td_from_mss = Fraction(0, 1)
+	sum_ms = Fraction(0, 1)
 	dim = []
 	for i, (bar, ms) in enumerate(meterSigs):
 		start_bar = int(bar)
 		end_bar = int(meterSigs[i + 1][0]) - 1 if i < (len(meterSigs) - 1) else int(measures[-1].get('n'))
-		meter = f'{ms.get('count')}/{ms.get('unit')}' if ms is not None else 'None'
-		mi.append(f'{meter} ({start_bar}-{end_bar})')
+		if ms is not None:
+			count = int(ms.get('count'))
+			unit = int(ms.get('unit'))
+			meter = f'{count}/{unit}'
+			td_from_mss += ((end_bar - start_bar) + 1) * Fraction(count, unit)
+		else:
+			meter = 'None'
+		mi.append(f'{meter} ({start_bar}-{end_bar})')	
 		dim.append('1')
 	meterinfo_str = '; '.join(mi) 
 	diminution_str = '; '.join(dim)
 
-	return [author_str, title_str, source_str, tss_str, tuning_str, meterinfo_str, diminution_str]
+	# If the total duration calculated from the <tabGrp>s is different from the 
+	# total duration calculated from the mensuration signs
+	if get_total_dur(score, ns) != td_from_mss:
+		meterinfo_str = ''
+		diminution_str = ''
+
+	return ([author_str, title_str, source_str, tss_str, tuning_str, meterinfo_str, diminution_str])
 
 
 def _get_meterSigs(score: etree._Element) -> list:
@@ -484,7 +507,7 @@ if __name__ == "__main__":
 	# Possible direct children in <score>: <scoreDef>, <section>, <sb>
 	for elem in score:
 		if elem.tag == f'{URI_MEI}scoreDef':
-			tbp_str += handle_scoreDef(elem, choices)
+			tbp_str += handle_scoreDef(elem, choices)			
 		elif elem.tag == f'{URI_MEI}section':
 			tbp_str += handle_section(elem, choices)
 		elif elem.tag == f'{URI_MEI}sb':
@@ -493,6 +516,7 @@ if __name__ == "__main__":
 
 	# 4. Extract metadata
 	metadata = get_metadata(meiHead, score, ns)
+#	print('test', file=sys.stderr, flush=True)
 
 	# 5. Serialise into JSON-formatted string and print
 	print(json.dumps(metadata + [tbp_str]))
