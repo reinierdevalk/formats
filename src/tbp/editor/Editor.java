@@ -166,7 +166,7 @@ public class Editor extends JFrame{
 
 			String cp = 
 				store ? argPaths.get("CONVERTER_PATH") : 
-				StringTools.getPathString(Arrays.asList(argPaths.get("DIPLOMAT_PATH"), "in"));
+				StringTools.getPathString(Arrays.asList(argPaths.get("DIPLOMAT_PATH"), argPaths.get("IN_DIR")));
 			String inputName = ToolBox.splitExt(source)[0];
 			String inputFormat = ToolBox.splitExt(source)[1];
 			String outputName = ToolBox.splitExt(destination)[0];
